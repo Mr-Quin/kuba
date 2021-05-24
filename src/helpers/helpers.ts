@@ -12,11 +12,11 @@ export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => {
 }
 
 export const setWindowPath = (path: string) => {
-    window.history.replaceState(null, 'Kuba', path)
+    window.location.hash = path
 }
 
 export const readWindowPath = () => {
-    return window.location.pathname.slice(1)
+    return window.location.hash.slice(1)
 }
 
 export const properCase = (str: string) => {
