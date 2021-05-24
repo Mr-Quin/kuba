@@ -2,8 +2,10 @@ import React, { useCallback, useEffect, useState } from 'react'
 import Typography from '@material-ui/core/Typography'
 import { makeStyles } from '@material-ui/core/styles'
 import useGameStore, { Marble } from '../store/useGameStore'
-import { Backdrop, Button, Card, CardActions, CardContent, Snackbar } from '@material-ui/core'
+import { Backdrop, Card, CardActions, CardContent, Snackbar } from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
+import { properCase } from '../helpers/helpers'
+import { Undo, Reset, ExportGame } from './actions'
 
 const useStyles = makeStyles({
     root: {
@@ -21,14 +23,14 @@ const useStyles = makeStyles({
 
 const Display = () => {
     const classes = useStyles()
-    const [open, setOpen] = useState(false)
+    const [alertOpen, setAlertOpen] = useState(false)
     const [backDropOpen, setBackDropOpen] = useState(false)
-    const [undo, reset, turns, currentPlayer, error, captures, winner] = useGameStore(
+    const [undo, reset, turn, currentPlayer, error, captures, winner] = useGameStore(
         useCallback(
             (state) => [
                 state.undo,
                 state.reset,
-                state.turns,
+                state.turn,
                 state.currentPlayer,
                 state.errorMessage,
                 state.captures,
@@ -40,9 +42,9 @@ const Display = () => {
 
     useEffect(() => {
         if (error.message) {
-            setOpen(true)
+            setAlertOpen(true)
         } else {
-            setOpen(false)
+            setAlertOpen(false)
         }
         if (winner !== null) {
             setBackDropOpen(true)
@@ -51,7 +53,7 @@ const Display = () => {
 
     const handleAlertClose = useCallback((e, reason?) => {
         if (reason === 'clickaway') return
-        setOpen(false)
+        setAlertOpen(false)
     }, [])
 
     const handleBackDropClose = useCallback(() => {
@@ -66,13 +68,14 @@ const Display = () => {
                         Kuba
                     </Typography>
                     <Typography>
-                        Turn {turns}, {currentPlayer !== null ? Marble[currentPlayer] : 'anyone'}
+                        Turn {turn},{' '}
+                        {currentPlayer !== null ? properCase(Marble[currentPlayer]) : 'Anyone'}
                     </Typography>
                     <Typography>
                         Captures: White: {captures[Marble.WHITE]}, Black: {captures[Marble.BLACK]}
                     </Typography>
                     <Snackbar
-                        open={open}
+                        open={alertOpen}
                         autoHideDuration={2000}
                         onClose={handleAlertClose}
                         anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
@@ -85,12 +88,9 @@ const Display = () => {
                     </Snackbar>
                 </CardContent>
                 <CardActions>
-                    <Button variant="contained" onClick={undo}>
-                        Undo
-                    </Button>
-                    <Button variant="contained" color="secondary" onClick={reset}>
-                        Reset
-                    </Button>
+                    <Undo />
+                    <Reset />
+                    <ExportGame />
                 </CardActions>
             </Card>
 

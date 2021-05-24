@@ -8,6 +8,9 @@ import shallow from 'zustand/shallow'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
+        grid: {
+            userSelect: 'none',
+        },
         paper: {
             padding: theme.spacing(1),
             color: theme.palette.text.secondary,
@@ -23,7 +26,7 @@ const Board = () => {
 
     return (
         <>
-            <Grid container>
+            <Grid className={classes.grid} container>
                 {currentBoard.map((row, i) => {
                     return (
                         <Grid container item spacing={0} key={i}>

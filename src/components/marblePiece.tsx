@@ -54,10 +54,10 @@ const selector = (state: GameStore) => state.makeMove
 const mapDir = (xyDir: [number, number]) => {
     const [x, y] = xyDir
     if (x === 0) {
-        if (y === 1) return Direction.DOWN
+        if (y > 0) return Direction.DOWN
         return Direction.UP
     } else {
-        if (x === 1) return Direction.RIGHT
+        if (x > 0) return Direction.RIGHT
         return Direction.LEFT
     }
 }
@@ -79,10 +79,10 @@ const MarblePiece = memo((props: Props) => {
     const [{ x, y }, set] = useSpring(() => ({ x: 0, y: 0 }))
 
     const bind = useDrag(
-        ({ down, movement: [mx, my], distance, direction }) => {
+        ({ down, movement: [mx, my], distance }) => {
             if (!(color === 'black' || color === 'white')) return
             const trigger = distance > 30
-            const dir = mapDir(direction)
+            const dir = mapDir([mx, my])
             set({ x: down ? mx : 0, y: down ? my : 0 })
             if (!down && trigger) handleClick(dir)
         },

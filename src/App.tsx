@@ -1,8 +1,9 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import Board from './components/board'
 import Display from './components/display'
 import { Container } from '@material-ui/core'
 import { makeStyles } from '@material-ui/core/styles'
+import useGameStore from './store/useGameStore'
 
 const useStyles = makeStyles({
     root: {
@@ -14,6 +15,11 @@ const useStyles = makeStyles({
 
 function App() {
     const classes = useStyles()
+    const initGame = useGameStore((state) => state.init)
+
+    useEffect(() => {
+        initGame()
+    }, [initGame])
 
     return (
         <Container className={classes.root} maxWidth="sm">

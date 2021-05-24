@@ -1,5 +1,14 @@
 import create from 'zustand'
 import { Game } from '../types/game'
+import {
+    getLast,
+    invertVector,
+    properCase,
+    readWindowPath,
+    setWindowPath,
+    sumVector,
+} from '../helpers/helpers'
+import { compareBoards, createBoard, decodeGameState, encodeGameState } from '../helpers/gameUtils'
 
 export enum Marble {
     EMPTY = -1,
@@ -15,7 +24,21 @@ export enum Direction {
     DOWN,
 }
 
+export const marbleStrTable: Record<Marble, string> = {
+    [Marble.WHITE]: 'w',
+    [Marble.BLACK]: 'b',
+    [Marble.RED]: 'r',
+    [Marble.EMPTY]: '',
+}
+
+export const marbleStrTableReverse: Record<string, Marble> = {
+    w: Marble.WHITE,
+    b: Marble.BLACK,
+    r: Marble.RED,
+}
+
 const vectorTable: Game.Vector[] = [
+    // corresponds to Direction enum
     [0, -1], // left
     [0, 1], //right
     [-1, 0], // up
@@ -29,14 +52,6 @@ const getOtherPlayer = (currentPlayer: Game.Player) => {
     }[currentPlayer] as Game.Player
 }
 
-const invertVector = (vector: Game.Vector) => {
-    return vector.map((val) => -val) as Game.Vector
-}
-
-const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => {
-    return vector1.map((val, i) => val + vector2[i])
-}
-
 const toDirection = (direction: Direction) => {
     const nextPos = (pos: Game.Vector) => sumVector(vectorTable[direction], pos) as Game.Vector
     const prevPos = (pos: Game.Vector) =>
@@ -44,34 +59,13 @@ const toDirection = (direction: Direction) => {
     return [nextPos, prevPos]
 }
 
-const getLast = <t>(arr: t[]): t => {
-    return arr[arr.length - 1]
-}
-
-const createBoard = () => {
-    const [X, B, W, R] = [Marble.EMPTY, Marble.BLACK, Marble.WHITE, Marble.RED]
-    return [
-        [W, W, X, X, X, B, B],
-        [W, W, X, R, X, B, B],
-        [X, X, R, R, R, X, X],
-        [X, R, R, R, R, R, X],
-        [X, X, R, R, R, X, X],
-        [B, B, X, R, X, W, W],
-        [B, B, X, X, X, W, W],
-    ]
-}
-
-const compareBoards = (b1: Game.BoardState, b2: Game.BoardState) => {
-    return JSON.stringify(b1) !== JSON.stringify(b2)
-}
-
 export interface GameStore {
     currentBoard: Game.BoardState
     simBoard: Game.BoardState
     boardHistory: Game.History[]
     winner: Nullable<Marble>
-    errorMessage: { message: string; update: any }
-    turns: number
+    errorMessage: { message: string; update: any } // update is used to force re-trigger alert
+    turn: number
     captures: Game.Captures
     currentPlayer: Nullable<Game.Player>
     makeMove: (pos: Game.Vector, direction: Direction) => void
@@ -82,10 +76,13 @@ export interface GameStore {
     getMarble: (pos: Game.Vector) => Marble
     setMarble: (pos: Game.Vector, marble: Marble) => void
     countMarble: (board: Game.BoardState) => Game.MarbleCount
-    increaseCapture: (player: Game.Player, amount: number) => void
+    findMoves: (player: Game.Player) => Game.Move
+    modifyCapture: (player: Game.Player, amount: number) => void
     validateBoard: (player: Game.Player) => void
     validateMove: (prevPos: Game.Vector, player: Game.Player) => void
     reset: () => void
+    init: () => void
+    toString: () => string
 }
 
 const useGameStore = create<GameStore>((set, get) => ({
@@ -94,7 +91,7 @@ const useGameStore = create<GameStore>((set, get) => ({
     boardHistory: [],
     winner: null,
     errorMessage: { message: '', update: 0 },
-    turns: 1,
+    turn: 1,
     captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
     currentPlayer: null,
     makeMove: (pos, direction) => {
@@ -108,7 +105,8 @@ const useGameStore = create<GameStore>((set, get) => ({
             boardHistory,
             validateBoard,
             validateMove,
-            increaseCapture,
+            modifyCapture,
+            toString,
         } = get()
 
         const currentColor = getMarble(pos) as Game.Player // current color should eq current player
@@ -125,7 +123,7 @@ const useGameStore = create<GameStore>((set, get) => ({
 
         shiftMarble(pos, nextPos)
 
-        // validate move
+        // validate board
         try {
             validateBoard(currentColor)
         } catch (e) {
@@ -149,14 +147,16 @@ const useGameStore = create<GameStore>((set, get) => ({
             marbleChange: redMarbleDiff,
         })
 
-        // apply board visuals
+        // apply board
         applySim()
+        setWindowPath(toString())
 
-        increaseCapture(currentColor, redMarbleDiff)
-        if (newMarbleCount[opponent] === 0 || get().captures[currentColor] >= 7) {
+        modifyCapture(currentColor, redMarbleDiff)
+
+        if (!newMarbleCount[opponent] || get().captures[currentColor] >= 7) {
             set({ winner: currentColor })
         }
-        set((state) => ({ turns: state.turns + 1, errorMessage: { message: '', update: 0 } })) // increment turn and unset error
+        set((state) => ({ turn: state.turn + 1 })) // increment turn
 
         // alternate player
         if (currentPlayer === null || changePlayer) {
@@ -164,17 +164,18 @@ const useGameStore = create<GameStore>((set, get) => ({
         }
     },
     undo: () => {
-        const { turns, boardHistory, increaseCapture } = get()
-        if (turns === 1) return
+        const { turn, boardHistory, modifyCapture, toString } = get()
+        if (turn === 1) return
         const { board, player, marbleChange } = boardHistory.pop() as Game.History
         set({
             currentPlayer: player,
             currentBoard: board,
             simBoard: board,
-            turns: turns - 1,
+            turn: turn - 1,
             winner: null,
         })
-        increaseCapture(player!, -marbleChange)
+        modifyCapture(player!, -marbleChange)
+        setWindowPath(toString())
     },
     applySim: () => {
         set({ currentBoard: get().simBoard })
@@ -217,11 +218,14 @@ const useGameStore = create<GameStore>((set, get) => ({
             return { ...acc, [cur]: acc[cur] + 1 }
         }, {} as Game.MarbleCount)
     },
-    increaseCapture: (player, amount) => {
+    modifyCapture: (player, amount) => {
         const captures = get().captures
         const val = captures[player] + amount
 
         set({ captures: { ...captures, [player]: val } })
+    },
+    findMoves: (player) => {
+        return [[0, 0], 0]
     },
     validateBoard: (player) => {
         const { boardHistory, simBoard, currentBoard, countMarble } = get()
@@ -241,19 +245,36 @@ const useGameStore = create<GameStore>((set, get) => ({
         const { winner, currentPlayer, getMarble } = get()
         if (winner !== null) throw Error('Game already over')
         if (getMarble(prevPos) !== Marble.EMPTY) throw Error('Cannot push in this direction')
-        if (currentPlayer !== null && player !== currentPlayer) throw Error('Wrong color')
+        if (currentPlayer !== null && player !== currentPlayer)
+            throw Error(`${properCase(Marble[currentPlayer])}'s turn`)
+    },
+    init: () => {
+        const path = readWindowPath()
+        decodeGameState(path)
+            .then((board) => {
+                set({ currentBoard: board, simBoard: board })
+            })
+            .catch(() => {
+                set({ currentBoard: createBoard(), simBoard: createBoard() })
+            })
+            .finally(() => {
+                set({
+                    boardHistory: [],
+                    winner: null,
+                    errorMessage: { message: '', update: 0 },
+                    turn: 1,
+                    captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
+                    currentPlayer: null,
+                })
+            })
     },
     reset: () => {
-        set({
-            currentBoard: createBoard(),
-            simBoard: createBoard(),
-            boardHistory: [],
-            winner: null,
-            errorMessage: { message: '', update: 0 },
-            turns: 1,
-            captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
-            currentPlayer: null,
-        })
+        setWindowPath('/')
+        get().init()
+    },
+    toString: () => {
+        const { currentBoard } = get()
+        return encodeGameState(currentBoard)
     },
 }))
 
