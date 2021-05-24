@@ -25,11 +25,9 @@ const Display = () => {
     const classes = useStyles()
     const [alertOpen, setAlertOpen] = useState(false)
     const [backDropOpen, setBackDropOpen] = useState(false)
-    const [undo, reset, turn, currentPlayer, error, captures, winner] = useGameStore(
+    const [turn, currentPlayer, error, captures, winner] = useGameStore(
         useCallback(
             (state) => [
-                state.undo,
-                state.reset,
                 state.turn,
                 state.currentPlayer,
                 state.errorMessage,
