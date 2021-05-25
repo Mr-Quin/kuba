@@ -4,16 +4,19 @@ import { chunk } from './helpers'
 
 export const createBoard = () => {
     const [X, B, W, R] = [Marble.EMPTY, Marble.BLACK, Marble.WHITE, Marble.RED]
+    // prettier-ignore
     return [
-        [W, W, X, X, X, B, B],
-        [W, W, X, R, X, B, B],
-        [X, X, R, R, R, X, X],
-        [X, R, R, R, R, R, X],
-        [X, X, R, R, R, X, X],
-        [B, B, X, R, X, W, W],
-        [B, B, X, X, X, W, W],
+        W, W, X, X, X, B, B,
+        W, W, X, R, X, B, B,
+        X, X, R, R, R, X, X,
+        X, R, R, R, R, R, X,
+        X, X, R, R, R, X, X,
+        B, B, X, R, X, W, W,
+        B, B, X, X, X, W, W,
     ]
 }
+
+export const boardTo2D = (board: Game.BoardState) => chunk(board, 7)
 
 export const compareBoards = (b1: Game.BoardState, b2: Game.BoardState) => {
     return JSON.stringify(b1) !== JSON.stringify(b2)
@@ -60,7 +63,7 @@ const encodeBoard = (gameBoard: Game.BoardState) => {
     let boardStr = ''
     let spaceCount = 0
 
-    for (const row of gameBoard) {
+    for (const row of boardTo2D(gameBoard)) {
         for (const cell of row) {
             if (cell === Marble.EMPTY) {
                 spaceCount += 1
@@ -103,7 +106,7 @@ const decodeBoard = (boardString: string): Promise<Game.BoardState> => {
                 }
             })
             if (rowState.length !== 7) rej('Board: Incorrect notation')
-            board.push(rowState)
+            // board.push(rowState)
         })
         if (board.length !== 7) rej('Board: Incorrect notation')
         res(board)

@@ -71,7 +71,7 @@ const MarblePiece = memo((props: Props) => {
 
     const handleClick = useCallback(
         (dir: Direction) => {
-            makeMove([posRow, posCol], dir)
+            makeMove(posRow * 7 + posCol, dir)
         },
         [posRow, posCol, makeMove]
     )

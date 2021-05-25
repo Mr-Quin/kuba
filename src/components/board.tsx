@@ -5,6 +5,7 @@ import Grid from '@material-ui/core/Grid'
 import useGameStore, { GameStore, Marble } from '../store/useGameStore'
 import MarblePiece from './marblePiece'
 import shallow from 'zustand/shallow'
+import { boardTo2D } from '../helpers/gameUtils'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
@@ -27,7 +28,7 @@ const Board = () => {
     return (
         <>
             <Grid className={classes.grid} container>
-                {currentBoard.map((row, i) => {
+                {boardTo2D(currentBoard).map((row, i) => {
                     return (
                         <Grid container item spacing={0} key={i}>
                             {row.map((cell, j) => {

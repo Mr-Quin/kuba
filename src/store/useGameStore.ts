@@ -32,10 +32,17 @@ export const marbleStrTableReverse: Record<string, Marble> = {
 
 const vectorTable: Game.Vector[] = [
     // corresponds to Direction enum
-    [0, -1], // left
-    [0, 1], //right
-    [-1, 0], // up
-    [1, 0], // down
+    -1, // left
+    1, // right
+    -7, // up
+    7, // down
+]
+
+const illegalMovePos = [
+    new Set([0, 7, 14, 21, 28, 35, 42]), // left
+    new Set([6, 13, 20, 27, 34, 41, 48]), // right
+    new Set([0, 1, 2, 3, 4, 5, 6]), // up
+    new Set([43, 44, 45, 46, 47, 48]), // down
 ]
 
 const getOtherPlayer = (currentPlayer: Game.Player) => {
@@ -65,7 +72,12 @@ export interface GameStore {
     undo: () => void
     applySim: () => void
     discardSim: () => void
-    shiftMarble: (pos: Game.Vector, next: (arg: any) => any, prev?: Marble) => void
+    shiftMarble: (
+        pos: Game.Vector,
+        next: (arg: any) => any,
+        dir: Game.Vector,
+        prev?: Marble
+    ) => void
     getMarble: (pos: Game.Vector) => Marble
     setMarble: (pos: Game.Vector, marble: Marble) => void
     countMarble: (board: Game.BoardState) => Game.MarbleCount
@@ -78,6 +90,8 @@ export interface GameStore {
     init: () => void
     encode: () => string
 }
+
+const getMoves = (board: Game.BoardState) => {}
 
 const useGameStore = create<GameStore>((set, get) => ({
     currentBoard: createBoard(),
@@ -116,7 +130,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             return
         }
 
-        shiftMarble(pos, nextPos)
+        shiftMarble(pos, nextPos, direction)
 
         // validate board
         try {
@@ -179,19 +193,21 @@ const useGameStore = create<GameStore>((set, get) => ({
     discardSim: () => {
         set({ simBoard: get().currentBoard })
     },
-    shiftMarble: (pos: Game.Vector, next: any, prev = Marble.EMPTY) => {
+    shiftMarble: (pos: Game.Vector, next: any, dir, prev = Marble.EMPTY) => {
         const marble = get().getMarble(pos)
-        if (marble === Marble.EMPTY) {
+        if (illegalMovePos[dir].has(pos)) {
+            return
+        } else if (marble === Marble.EMPTY) {
             get().setMarble(pos, prev)
         } else {
-            get().shiftMarble(next(pos), next, marble)
+            get().shiftMarble(next(pos), next, dir, marble)
             get().setMarble(pos, prev)
         }
     },
     getMarble: (pos) => {
         const board = get().simBoard
         try {
-            return board[pos[0]][pos[1]] ?? Marble.EMPTY
+            return board[pos] ?? Marble.EMPTY
         } catch (e) {
             return Marble.EMPTY
         }
@@ -199,9 +215,9 @@ const useGameStore = create<GameStore>((set, get) => ({
     setMarble: (pos, marble) => {
         const board = get().simBoard
         try {
-            if (board[pos[0]][pos[1]] !== undefined) {
-                const newBoard = JSON.parse(JSON.stringify(board)) // deep copy board
-                newBoard[pos[0]][pos[1]] = marble
+            if (board[pos] !== undefined) {
+                const newBoard = [...board] // deep copy board
+                newBoard[pos] = marble
                 set({ simBoard: newBoard })
             }
         } catch (e) {
@@ -209,7 +225,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         }
     },
     countMarble: (board) => {
-        return board.flat().reduce((acc, cur) => {
+        return board.reduce((acc, cur) => {
             if (acc[cur] === undefined) return { ...acc, [cur]: 1 }
             return { ...acc, [cur]: acc[cur] + 1 }
         }, {} as Game.MarbleCount)
@@ -221,7 +237,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         set({ captures: { ...captures, [player]: val } })
     },
     findMoves: (player) => {
-        return [[0, 0], 0]
+        return [0, 0]
     },
     validateBoard: (player) => {
         const { boardHistory, simBoard, currentBoard, countMarble } = get()
