@@ -8,14 +8,14 @@ export const invertVector = (vector: Game.Vector) => {
 }
 
 export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => {
-    return vector1.map((val, i) => val + vector2[i])
+    return vector1.map((val, i) => val + vector2[i]) as Game.Vector
 }
 
-export const setHash = (path?: string) => {
+export const setWindowHash = (path?: string) => {
     window.location.hash = path ?? ''
 }
 
-export const readHash = () => {
+export const readWindowHash = () => {
     return window.location.hash.slice(1)
 }
 

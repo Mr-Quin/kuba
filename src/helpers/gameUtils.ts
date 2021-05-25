@@ -15,8 +15,39 @@ export const createBoard = () => {
     ]
 }
 
+export const boardToPieces = (board: Game.BoardState) => {
+    const pieces: Game.Piece[] = []
+
+    board.forEach((row, i) => {
+        row.forEach((marble, j) => {
+            if (marble !== Marble.EMPTY) {
+                pieces.push({
+                    pos: [i, j],
+                    color: marble,
+                })
+            }
+        })
+    })
+
+    return pieces
+}
+
 export const compareBoards = (b1: Game.BoardState, b2: Game.BoardState) => {
     return JSON.stringify(b1) !== JSON.stringify(b2)
+}
+
+// encodeGame state in the form 'board-capture-turnCount-player'. Player is nullable
+export const encodeGameState = (gameState: Game.GameState) => {
+    const { board, captures, currentPlayer, turn } = gameState
+
+    const boardStr = encodeBoard(board)
+    const capStr = encodeCaptures(captures)
+    const playerStr = marbleStrTable[currentPlayer as Marble]
+    const turnStr = turn.toString()
+    const otherData = [capStr, turnStr, playerStr].join(' ')
+    const gameStr = [boardStr, otherData].join('-')
+
+    return btoa(gameStr)
 }
 
 export const decodeGameState = (gameString: string) => {
@@ -29,7 +60,7 @@ export const decodeGameState = (gameString: string) => {
             playerStr === undefined ? null : (marbleStrTableReverse[playerStr] as Game.Player)
         const turn = parseInt(turnStr)
 
-        Promise.all([decodeBoard(boardStr), decodeCap(capStr)])
+        Promise.all([decodeBoard(boardStr), decodeCaptures(capStr)])
             .then(([board, captures]) => {
                 res({
                     board,
@@ -42,46 +73,32 @@ export const decodeGameState = (gameString: string) => {
     })
 }
 
-// encode state in the form 'board-capture-turnCount-player'. Player is nullable
-export const encodeGameState = (gameState: Game.GameState) => {
-    const { board, captures, currentPlayer, turn } = gameState
-
-    const boardStr = encodeBoard(board)
-    const capStr = encodeCap(captures)
-    const playerStr = marbleStrTable[currentPlayer as Marble]
-    const turnStr = turn.toString()
-    const otherData = [capStr, turnStr, playerStr].join(' ')
-    const gameStr = [boardStr, otherData].join('-')
-
-    return btoa(gameStr)
-}
-
 const encodeBoard = (gameBoard: Game.BoardState) => {
     let boardStr = ''
     let spaceCount = 0
 
-    for (const row of gameBoard) {
-        for (const cell of row) {
-            if (cell === Marble.EMPTY) {
+    gameBoard.forEach((row) => {
+        row.forEach((marble) => {
+            if (marble === Marble.EMPTY) {
                 spaceCount += 1
             } else if (spaceCount > 0) {
                 boardStr += spaceCount.toString()
-                boardStr += marbleStrTable[cell as Marble]
+                boardStr += marbleStrTable[marble as Marble]
                 spaceCount = 0
             } else {
-                boardStr += marbleStrTable[cell as Marble]
+                boardStr += marbleStrTable[marble as Marble]
             }
-        }
+        })
         if (spaceCount > 0) {
             boardStr += spaceCount.toString()
             spaceCount = 0
         }
         boardStr += '/'
-    }
+    })
     return boardStr.slice(0, -1)
 }
 
-const encodeCap = (captures: Game.Captures) => {
+const encodeCaptures = (captures: Game.Captures) => {
     return Object.entries(captures)
         .map(([player, capCount]) => {
             return marbleStrTable[parseInt(player) as Marble] + capCount.toString()
@@ -110,7 +127,7 @@ const decodeBoard = (boardString: string): Promise<Game.BoardState> => {
     })
 }
 
-const decodeCap = (capStr: string) => {
+const decodeCaptures = (capStr: string) => {
     return new Promise<Game.Captures>((res, rej) => {
         if (capStr.length !== 4) rej('Capture: Incorrect notation')
         const capture = Object.fromEntries(

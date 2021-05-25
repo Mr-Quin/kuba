@@ -14,4 +14,8 @@ export declare namespace Game {
         turn: number
         currentPlayer: Nullable<Game.Player>
     }
+    type Piece = {
+        pos: Game.Vector
+        color: Marble
+    }
 }
