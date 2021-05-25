@@ -1,13 +1,6 @@
 import create from 'zustand'
 import { Game } from '../types/game'
-import {
-    getLast,
-    invertVector,
-    properCase,
-    readWindowPath,
-    setWindowPath,
-    sumVector,
-} from '../helpers/helpers'
+import { getLast, invertVector, properCase, readHash, setHash, sumVector } from '../helpers/helpers'
 import { compareBoards, createBoard, decodeGameState, encodeGameState } from '../helpers/gameUtils'
 
 export enum Marble {
@@ -82,7 +75,7 @@ export interface GameStore {
     validateMove: (prevPos: Game.Vector, player: Game.Player) => void
     reset: () => void
     init: () => void
-    toString: () => string
+    encode: () => string
 }
 
 const useGameStore = create<GameStore>((set, get) => ({
@@ -106,7 +99,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             validateBoard,
             validateMove,
             modifyCapture,
-            toString,
+            encode,
         } = get()
 
         const currentColor = getMarble(pos) as Game.Player // current color should eq current player
@@ -149,8 +142,6 @@ const useGameStore = create<GameStore>((set, get) => ({
 
         // apply board
         applySim()
-        setWindowPath(toString())
-
         modifyCapture(currentColor, redMarbleDiff)
 
         if (!newMarbleCount[opponent] || get().captures[currentColor] >= 7) {
@@ -162,9 +153,12 @@ const useGameStore = create<GameStore>((set, get) => ({
         if (currentPlayer === null || changePlayer) {
             set({ currentPlayer: opponent })
         }
+
+        // encode board
+        setHash(encode())
     },
     undo: () => {
-        const { turn, boardHistory, modifyCapture, toString } = get()
+        const { turn, boardHistory, modifyCapture, encode } = get()
         if (turn === 1) return
         const { board, player, marbleChange } = boardHistory.pop() as Game.History
         set({
@@ -175,7 +169,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             winner: null,
         })
         modifyCapture(player!, -marbleChange)
-        setWindowPath(toString())
+        setHash(encode())
     },
     applySim: () => {
         set({ currentBoard: get().simBoard })
@@ -249,32 +243,36 @@ const useGameStore = create<GameStore>((set, get) => ({
             throw Error(`${properCase(Marble[currentPlayer])}'s turn`)
     },
     init: () => {
-        const path = readWindowPath()
-        decodeGameState(path)
-            .then((board) => {
-                set({ currentBoard: board, simBoard: board })
+        const hash = readHash()
+
+        decodeGameState(hash)
+            .then(({ board, currentPlayer, turn, captures }) => {
+                set({ currentBoard: board, simBoard: board, turn, currentPlayer, captures })
             })
-            .catch(() => {
-                set({ currentBoard: createBoard(), simBoard: createBoard() })
+            .catch((e) => {
+                set({
+                    currentBoard: createBoard(),
+                    simBoard: createBoard(),
+                    turn: 1,
+                    currentPlayer: null,
+                    captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
+                })
             })
             .finally(() => {
                 set({
-                    boardHistory: [],
                     winner: null,
+                    boardHistory: [],
                     errorMessage: { message: '', update: 0 },
-                    turn: 1,
-                    captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
-                    currentPlayer: null,
                 })
             })
     },
     reset: () => {
-        setWindowPath('/')
+        setHash('')
         get().init()
     },
-    toString: () => {
-        const { currentBoard } = get()
-        return encodeGameState(currentBoard)
+    encode: () => {
+        const { currentBoard, captures, turn, currentPlayer } = get()
+        return encodeGameState({ board: currentBoard, captures, turn, currentPlayer })
     },
 }))
 

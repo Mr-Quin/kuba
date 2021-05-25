@@ -10,8 +10,8 @@ export declare namespace Game {
     type Move = [Game.Vector, Direction]
     type GameState = {
         board: Game.BoardState
-        capture: Captures
+        captures: Captures
         turn: number
-        player: Nullable<Game.Player>
+        currentPlayer: Nullable<Game.Player>
     }
 }
