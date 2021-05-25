@@ -73,6 +73,7 @@ export interface GameStore {
     modifyCapture: (player: Game.Player, amount: number) => void
     validateBoard: (player: Game.Player) => void
     validateMove: (prevPos: Game.Vector, player: Game.Player) => void
+    setError: (errMessage: Error | string) => void
     reset: () => void
     init: () => void
     encode: () => string
@@ -100,6 +101,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             validateMove,
             modifyCapture,
             encode,
+            setError,
         } = get()
 
         const currentColor = getMarble(pos) as Game.Player // current color should eq current player
@@ -110,7 +112,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         try {
             validateMove(prevPos(pos), currentColor)
         } catch (e) {
-            set({ errorMessage: { message: e.toString(), update: Math.random() } })
+            setError(e)
             return
         }
 
@@ -120,7 +122,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         try {
             validateBoard(currentColor)
         } catch (e) {
-            set({ errorMessage: { message: e.toString(), update: Math.random() } })
+            setError(e)
             discardSim()
             return
         }
@@ -242,6 +244,9 @@ const useGameStore = create<GameStore>((set, get) => ({
         if (currentPlayer !== null && player !== currentPlayer)
             throw Error(`${properCase(Marble[currentPlayer])}'s turn`)
     },
+    setError: (errMessage) => {
+        set({ errorMessage: { message: errMessage.toString(), update: Math.random() } })
+    },
     init: () => {
         const hash = readHash()
 
@@ -267,7 +272,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             })
     },
     reset: () => {
-        setHash('')
+        setHash()
         get().init()
     },
     encode: () => {
