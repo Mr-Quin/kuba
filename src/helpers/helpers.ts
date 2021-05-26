@@ -7,16 +7,16 @@ export const invertVector = (vector: Game.Vector) => -vector
 
 export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => vector1 + vector2
 
-export const setHash = (path?: string) => {
+export const setWindowHash = (path?: string) => {
     window.location.hash = path ?? ''
 }
 
-export const readHash = () => {
+export const getWindowHash = () => {
     return window.location.hash.slice(1)
 }
 
 export const chunk = <t>(arr: t[], size: number): t[][] =>
-    Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
         arr.slice(i * size, i * size + size)
     )
 

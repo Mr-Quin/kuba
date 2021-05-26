@@ -1,6 +1,13 @@
 import create from 'zustand'
 import { Game } from '../types/game'
-import { getLast, invertVector, properCase, readHash, setHash, sumVector } from '../helpers/helpers'
+import {
+    getLast,
+    invertVector,
+    properCase,
+    getWindowHash,
+    setWindowHash,
+    sumVector,
+} from '../helpers/helpers'
 import { compareBoards, createBoard, decodeGameState, encodeGameState } from '../helpers/gameUtils'
 
 export enum Marble {
@@ -11,10 +18,10 @@ export enum Marble {
 }
 
 export enum Direction {
-    LEFT,
-    RIGHT,
-    UP,
-    DOWN,
+    LEFT = 'l',
+    RIGHT = 'r',
+    UP = 'u',
+    DOWN = 'd',
 }
 
 export const marbleStrTable: Record<Marble, string> = {
@@ -30,33 +37,50 @@ export const marbleStrTableReverse: Record<string, Marble> = {
     r: Marble.RED,
 }
 
-const vectorTable: Game.Vector[] = [
-    // corresponds to Direction enum
-    -1, // left
-    1, // right
-    -7, // up
-    7, // down
-]
+export const vectorTable: Record<Direction, Game.Vector> = {
+    [Direction.LEFT]: -1,
+    [Direction.RIGHT]: 1,
+    [Direction.UP]: -7,
+    [Direction.DOWN]: 7,
+}
 
-const illegalMovePos = [
-    new Set([0, 7, 14, 21, 28, 35, 42]), // left
-    new Set([6, 13, 20, 27, 34, 41, 48]), // right
-    new Set([0, 1, 2, 3, 4, 5, 6]), // up
-    new Set([43, 44, 45, 46, 47, 48]), // down
-]
+export const edgeMovesTable: Record<Direction, Set<Game.Vector>> = {
+    [Direction.LEFT]: new Set([0, 7, 14, 21, 28, 35, 42]),
+    [Direction.RIGHT]: new Set([6, 13, 20, 27, 34, 41, 48]),
+    [Direction.UP]: new Set([0, 1, 2, 3, 4, 5, 6]),
+    [Direction.DOWN]: new Set([43, 44, 45, 46, 47, 48]),
+}
+
+export const otherPlayerTable: Record<Game.Player, Game.Player> = {
+    [Marble.WHITE]: Marble.BLACK,
+    [Marble.BLACK]: Marble.WHITE,
+}
+
+export const otherDirectionTable: Record<Direction, Direction> = {
+    [Direction.UP]: Direction.DOWN,
+    [Direction.DOWN]: Direction.UP,
+    [Direction.LEFT]: Direction.RIGHT,
+    [Direction.RIGHT]: Direction.LEFT,
+}
+
+/**
+ * Determine if move will push piece off of board
+ */
+const isEdgeMove = ([pos, dir]: Game.Move) => {
+    return edgeMovesTable[dir].has(pos)
+}
+
+const isEmpty = (marble: Marble) => marble === Marble.EMPTY
 
 const getOtherPlayer = (currentPlayer: Game.Player) => {
-    return {
-        [Marble.WHITE]: Marble.BLACK,
-        [Marble.BLACK]: Marble.WHITE,
-    }[currentPlayer] as Game.Player
+    return otherPlayerTable[currentPlayer]
 }
 
 const toDirection = (direction: Direction) => {
-    const nextPos = (pos: Game.Vector) => sumVector(vectorTable[direction], pos) as Game.Vector
-    const prevPos = (pos: Game.Vector) =>
+    const getNextPos = (pos: Game.Vector) => sumVector(vectorTable[direction], pos) as Game.Vector
+    const getPrevPos = (pos: Game.Vector) =>
         sumVector(invertVector(vectorTable[direction]), pos) as Game.Vector
-    return [nextPos, prevPos]
+    return [getNextPos, getPrevPos]
 }
 
 export interface GameStore {
@@ -68,51 +92,52 @@ export interface GameStore {
     turn: number
     captures: Game.Captures
     currentPlayer: Nullable<Game.Player>
-    makeMove: (pos: Game.Vector, direction: Direction) => void
+    makeMove: (move: Game.Move) => void
     undo: () => void
     applySim: () => void
     discardSim: () => void
-    shiftMarble: (
+    moveSeries: (pos: Game.Vector, next: (arg: any) => any, dir: Direction, prev?: Marble) => void
+    getSeries: (
         pos: Game.Vector,
         next: (arg: any) => any,
-        dir: Game.Vector,
-        prev?: Marble
-    ) => void
+        dir: Direction,
+        res?: Game.Series
+    ) => Game.Series
     getMarble: (pos: Game.Vector) => Marble
     setMarble: (pos: Game.Vector, marble: Marble) => void
     countMarble: (board: Game.BoardState) => Game.MarbleCount
-    findMoves: (player: Game.Player) => Game.Move
+    findMoves: (player: Game.Player) => Game.Move[]
     modifyCapture: (player: Game.Player, amount: number) => void
     validateBoard: (player: Game.Player) => void
-    validateMove: (prevPos: Game.Vector, player: Game.Player) => void
+    validateMove: (move: Game.Move, player: Game.Player) => string | undefined
     setError: (errMessage: Error | string) => void
     reset: () => void
     init: () => void
     encode: () => string
+    moveOne: (move: Game.Move) => void
 }
 
-const getMoves = (board: Game.BoardState) => {}
-
 const useGameStore = create<GameStore>((set, get) => ({
-    currentBoard: createBoard(),
-    simBoard: createBoard(),
+    currentBoard: [],
+    simBoard: [],
     boardHistory: [],
     winner: null,
     errorMessage: { message: '', update: 0 },
     turn: 1,
     captures: { [Marble.BLACK]: 0, [Marble.WHITE]: 0 },
     currentPlayer: null,
-    makeMove: (pos, direction) => {
+    makeMove: ([pos, direction]) => {
         const {
             getMarble,
             applySim,
             discardSim,
             currentPlayer,
-            shiftMarble,
+            moveSeries,
             countMarble,
             boardHistory,
             validateBoard,
             validateMove,
+            getSeries,
             modifyCapture,
             encode,
             setError,
@@ -123,14 +148,13 @@ const useGameStore = create<GameStore>((set, get) => ({
         const [nextPos, prevPos] = toDirection(direction)
 
         // validate move
-        try {
-            validateMove(prevPos(pos), currentColor)
-        } catch (e) {
-            setError(e)
+        const msg = validateMove([pos, direction], currentColor)
+        if (msg !== undefined) {
+            setError(msg)
             return
         }
 
-        shiftMarble(pos, nextPos, direction)
+        moveSeries(pos, nextPos, direction)
 
         // validate board
         try {
@@ -171,7 +195,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         }
 
         // encode board
-        setHash(encode())
+        setWindowHash(encode())
     },
     undo: () => {
         const { turn, boardHistory, modifyCapture, encode } = get()
@@ -185,7 +209,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             winner: null,
         })
         modifyCapture(player!, -marbleChange)
-        setHash(encode())
+        setWindowHash(encode())
     },
     applySim: () => {
         set({ currentBoard: get().simBoard })
@@ -193,16 +217,38 @@ const useGameStore = create<GameStore>((set, get) => ({
     discardSim: () => {
         set({ simBoard: get().currentBoard })
     },
-    shiftMarble: (pos: Game.Vector, next: any, dir, prev = Marble.EMPTY) => {
-        const marble = get().getMarble(pos)
-        if (illegalMovePos[dir].has(pos)) {
-            return
-        } else if (marble === Marble.EMPTY) {
-            get().setMarble(pos, prev)
+    moveOne: ([pos, dir]: Game.Move) => {
+        const { getMarble, setMarble } = get()
+
+        if (isEdgeMove([pos, dir])) return
+
+        const curMarble = getMarble(pos)
+        const prevPos = sumVector(pos, vectorTable[dir])
+        console.log(`Moving ${prevPos} to ${pos}, ${Marble[curMarble]}`)
+        setMarble(prevPos, curMarble)
+    },
+    getSeries: (pos, next, dir, res) => {
+        if (res === undefined) res = []
+        const { getMarble, getSeries } = get()
+        const marble = getMarble(pos)
+        if (marble === Marble.EMPTY) {
+            return res
+        } else if (isEdgeMove([pos, dir])) {
+            return [pos, ...res]
         } else {
-            get().shiftMarble(next(pos), next, dir, marble)
-            get().setMarble(pos, prev)
+            return getSeries(next(pos), next, dir, [pos, ...res])
         }
+    },
+    moveSeries: (pos, next, dir) => {
+        return new Promise<void>((res, rej) => {
+            const { getSeries, moveOne, setMarble } = get()
+            const marbleSeries = getSeries(pos, next, dir)
+            marbleSeries.forEach((vec) => {
+                moveOne([vec, dir])
+            })
+            setMarble(getLast(marbleSeries), Marble.EMPTY)
+            res()
+        })
     },
     getMarble: (pos) => {
         const board = get().simBoard
@@ -237,7 +283,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         set({ captures: { ...captures, [player]: val } })
     },
     findMoves: (player) => {
-        return [0, 0]
+        return []
     },
     validateBoard: (player) => {
         const { boardHistory, simBoard, currentBoard, countMarble } = get()
@@ -253,18 +299,22 @@ const useGameStore = create<GameStore>((set, get) => ({
             throw Error("Cannot revert opponent's move")
         }
     },
-    validateMove: (prevPos, player) => {
+    validateMove: ([pos, dir], player) => {
         const { winner, currentPlayer, getMarble } = get()
-        if (winner !== null) throw Error('Game already over')
-        if (getMarble(prevPos) !== Marble.EMPTY) throw Error('Cannot push in this direction')
+        const vecDir = vectorTable[dir]
+        const oppoDir = otherDirectionTable[dir]
+        const oppoDirVec = invertVector(vecDir)
+        if (winner !== null) return 'Game already over'
+        if (!(isEmpty(getMarble(sumVector(pos, oppoDirVec))) || isEdgeMove([pos, oppoDir])))
+            return 'Cannot push in this direction'
         if (currentPlayer !== null && player !== currentPlayer)
-            throw Error(`${properCase(Marble[currentPlayer])}'s turn`)
+            return `${properCase(Marble[currentPlayer])}'s turn`
     },
     setError: (errMessage) => {
         set({ errorMessage: { message: errMessage.toString(), update: Math.random() } })
     },
     init: () => {
-        const hash = readHash()
+        const hash = getWindowHash()
 
         decodeGameState(hash)
             .then(({ board, currentPlayer, turn, captures }) => {
@@ -288,7 +338,7 @@ const useGameStore = create<GameStore>((set, get) => ({
             })
     },
     reset: () => {
-        setHash()
+        setWindowHash()
         get().init()
     },
     encode: () => {

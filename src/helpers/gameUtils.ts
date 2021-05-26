@@ -25,6 +25,9 @@ export const compareBoards = (b1: Game.BoardState, b2: Game.BoardState) => {
 export const decodeGameState = (gameString: string) => {
     return new Promise<Game.GameState>((res, rej) => {
         const decodedStr = atob(gameString)
+
+        if (!decodedStr) rej('Empty string')
+
         const [boardStr, otherStr] = decodedStr.split('-')
         const [capStr, turnStr, playerStr] = otherStr.split(' ')
 
@@ -96,19 +99,16 @@ const decodeBoard = (boardString: string): Promise<Game.BoardState> => {
     return new Promise((res, rej) => {
         const board: Game.BoardState = []
         boardString.split('/').forEach((row) => {
-            const rowState: number[] = []
             row.split('').forEach((char) => {
                 if (Number.isInteger(parseInt(char))) {
                     const emptyArr = new Array(parseInt(char)).fill(Marble.EMPTY)
-                    rowState.push(...emptyArr)
+                    board.push(...emptyArr)
                 } else {
-                    rowState.push(marbleStrTableReverse[char])
+                    board.push(marbleStrTableReverse[char])
                 }
             })
-            if (rowState.length !== 7) rej('Board: Incorrect notation')
-            // board.push(rowState)
         })
-        if (board.length !== 7) rej('Board: Incorrect notation')
+        if (board.length !== 49) rej('Board: Incorrect notation')
         res(board)
     })
 }

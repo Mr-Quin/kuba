@@ -6,6 +6,7 @@ import useGameStore, { GameStore, Marble } from '../store/useGameStore'
 import MarblePiece from './marblePiece'
 import shallow from 'zustand/shallow'
 import { boardTo2D } from '../helpers/gameUtils'
+import BoardGrid from './boardGrid'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
@@ -26,29 +27,31 @@ const Board = () => {
     const currentBoard = useGameStore(selector, shallow)
 
     return (
-        <>
-            <Grid className={classes.grid} container>
-                {boardTo2D(currentBoard).map((row, i) => {
+        <Grid className={classes.grid} container>
+            <BoardGrid>
+                {currentBoard.map((marble, i) => {
                     return (
-                        <Grid container item spacing={0} key={i}>
-                            {row.map((cell, j) => {
-                                return (
-                                    <Grid item xs key={j}>
-                                        <Paper className={classes.paper} variant="outlined" square>
-                                            <MarblePiece
-                                                color={Marble[cell].toLowerCase() as any}
-                                                posRow={i}
-                                                posCol={j}
-                                            />
-                                        </Paper>
-                                    </Grid>
-                                )
-                            })}
-                        </Grid>
+                        <MarblePiece color={Marble[marble].toLowerCase() as any} pos={i} key={i} />
                     )
                 })}
-            </Grid>
-        </>
+            </BoardGrid>
+
+            {/*{boardTo2D(currentBoard).map((row, i) => {*/}
+            {/*    return (*/}
+            {/*        <Grid container item spacing={0} key={i}>*/}
+            {/*            {row.map((cell, j) => {*/}
+            {/*                return (*/}
+            {/*                    <Grid item xs key={j}>*/}
+            {/*                        <Paper className={classes.paper} variant="outlined" square>*/}
+            {/*                            <MarblePiece color={'empty'} posRow={i} posCol={j} />*/}
+            {/*                        </Paper>*/}
+            {/*                    </Grid>*/}
+            {/*                )*/}
+            {/*            })}*/}
+            {/*        </Grid>*/}
+            {/*    )*/}
+            {/*})}*/}
+        </Grid>
     )
 }
 

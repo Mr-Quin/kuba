@@ -1,14 +1,15 @@
-import React, { memo, useCallback } from 'react'
+import React, { memo, useCallback, useState } from 'react'
 import Paper from '@material-ui/core/Paper'
 import { createStyles, makeStyles } from '@material-ui/core/styles'
 import useGameStore, { Direction, GameStore } from '../store/useGameStore'
 import { useDrag } from 'react-use-gesture'
 import { useSpring, animated } from 'react-spring'
+import { Game } from '../types/game'
+import useDisplayStore, { DisplayStore } from '../store/useDisplayStore'
 
 interface Props {
     color: 'red' | 'black' | 'white' | 'empty'
-    posRow: number
-    posCol: number
+    pos: Game.Vector
 }
 
 const useStyles = makeStyles(() =>
@@ -30,6 +31,7 @@ const useStyles = makeStyles(() =>
             borderRadius: '50%',
             aspectRatio: '1',
             touchAction: 'none',
+            position: 'absolute',
             cursor: (props: Props) =>
                 props.color === 'empty' || props.color === 'red' ? 'default' : 'pointer',
             boxShadow: (props: Props) => {
@@ -49,7 +51,8 @@ const useStyles = makeStyles(() =>
     })
 )
 
-const selector = (state: GameStore) => state.makeMove
+const gameStoreSelector = (state: GameStore) => state.makeMove
+const displayStoreSelector = (state: DisplayStore) => state.gridSize
 
 const mapDir = (xyDir: [number, number]) => {
     const [x, y] = xyDir
@@ -62,36 +65,50 @@ const mapDir = (xyDir: [number, number]) => {
     }
 }
 
+const sizeOffset = 0.8
+
+const calcPos = (pos: Game.Vector, gridSize: number) => {
+    const offset = (gridSize * (1 - sizeOffset)) / 2
+    return {
+        x: gridSize * (pos % 7) + offset,
+        y: gridSize * Math.floor(pos / 7) + offset,
+    }
+}
+
 const AnimatedPaper = animated(Paper)
 
 const MarblePiece = memo((props: Props) => {
-    const { color, posRow, posCol } = props
+    const { color, pos } = props
     const classes = useStyles(props)
-    const makeMove = useGameStore(selector)
+    const makeMove = useGameStore(gameStoreSelector)
+    const gridSize = useDisplayStore(displayStoreSelector)
+    const [size] = useState(calcPos(pos, gridSize))
 
-    const handleClick = useCallback(
+    const handleDrag = useCallback(
         (dir: Direction) => {
-            makeMove(posRow * 7 + posCol, dir)
+            makeMove([pos, dir])
         },
-        [posRow, posCol, makeMove]
+        [pos, makeMove]
     )
 
-    const [{ x, y }, set] = useSpring(() => ({ x: 0, y: 0 }))
+    const [{ x, y }, set] = useSpring(() => size)
 
     const bind = useDrag(
         ({ down, movement: [mx, my], distance }) => {
             if (!(color === 'black' || color === 'white')) return
             const trigger = distance > 30
             const dir = mapDir([mx, my])
-            set({ x: down ? mx : 0, y: down ? my : 0 })
-            if (!down && trigger) handleClick(dir)
+            set({ x: down ? size.x + mx : size.x, y: down ? size.y + my : size.y })
+            if (!down && trigger) handleDrag(dir)
         },
         { lockDirection: true }
     )
 
-    // console.log('render', posRow, posCol)
-
-    return <AnimatedPaper className={classes.root} {...bind()} style={{ x, y }} />
+    return (
+        <AnimatedPaper className={classes.root} {...bind()} style={{ x, y, width: gridSize * 0.8 }}>
+            {pos}
+        </AnimatedPaper>
+    )
 })
 
 export default MarblePiece

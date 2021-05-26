@@ -6,6 +6,7 @@ export declare namespace Game {
     type Captures = { [Marble.BLACK]: number; [Marble.WHITE]: number }
     type Player = Marble.BLACK | Marble.WHITE
     type Vector = number
+    type Series = Game.Vector[]
     type MarbleCount = { [key: number]: number }
     type Move = [Game.Vector, Direction]
     type GameState = {
