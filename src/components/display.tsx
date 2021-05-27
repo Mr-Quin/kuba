@@ -7,6 +7,7 @@ import { Alert } from '@material-ui/lab'
 import { properCase } from '../helpers/helpers'
 import { Undo, Reset, ExportGame } from './actions'
 import { Marble } from '../helpers/gameUtils'
+import { useTranslation } from 'react-i18next'
 
 const useStyles = makeStyles({
     root: {
@@ -26,6 +27,7 @@ const Display = () => {
     const classes = useStyles()
     const [alertOpen, setAlertOpen] = useState(false)
     const [backDropOpen, setBackDropOpen] = useState(false)
+    const { t } = useTranslation()
     const [turn, currentPlayer, error, captures, winner] = useGameStore(
         useCallback(
             (state) => [
@@ -64,7 +66,7 @@ const Display = () => {
             <Card className={classes.root} variant={'elevation'}>
                 <CardContent>
                     <Typography className={classes.title} variant="h1" component="h1" gutterBottom>
-                        Kuba
+                        {t('title')}
                     </Typography>
                     <Typography>
                         Turn {turn},{' '}
