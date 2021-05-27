@@ -1,12 +1,11 @@
 import React from 'react'
 import { makeStyles, createStyles } from '@material-ui/core/styles'
-import Paper from '@material-ui/core/Paper'
 import Grid from '@material-ui/core/Grid'
-import useGameStore, { GameStore, Marble } from '../store/useGameStore'
+import useGameStore, { GameStore } from '../store/useGameStore'
 import MarblePiece from './marblePiece'
 import shallow from 'zustand/shallow'
-import { boardTo2D } from '../helpers/gameUtils'
 import BoardGrid from './boardGrid'
+import { Marble, Position } from '../helpers/gameUtils'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
@@ -20,37 +19,26 @@ const useStyles = makeStyles((theme) =>
     })
 )
 
-const selector = (state: GameStore) => state.currentBoard
+const selector = (state: GameStore) => state.pieces
 
 const Board = () => {
     const classes = useStyles()
-    const currentBoard = useGameStore(selector, shallow)
+    const marbles = useGameStore(selector, shallow)
 
     return (
         <Grid className={classes.grid} container>
-            <BoardGrid>
-                {currentBoard.map((marble, i) => {
+            <BoardGrid />
+            {marbles
+                .filter((marble) => marble.pos !== Position.OFF_GRID)
+                .map((marble, i) => {
                     return (
-                        <MarblePiece color={Marble[marble].toLowerCase() as any} pos={i} key={i} />
+                        <MarblePiece
+                            color={Marble[marble.color].toLowerCase() as any}
+                            pos={marble.pos}
+                            key={marble.id}
+                        />
                     )
                 })}
-            </BoardGrid>
-
-            {/*{boardTo2D(currentBoard).map((row, i) => {*/}
-            {/*    return (*/}
-            {/*        <Grid container item spacing={0} key={i}>*/}
-            {/*            {row.map((cell, j) => {*/}
-            {/*                return (*/}
-            {/*                    <Grid item xs key={j}>*/}
-            {/*                        <Paper className={classes.paper} variant="outlined" square>*/}
-            {/*                            <MarblePiece color={'empty'} posRow={i} posCol={j} />*/}
-            {/*                        </Paper>*/}
-            {/*                    </Grid>*/}
-            {/*                )*/}
-            {/*            })}*/}
-            {/*        </Grid>*/}
-            {/*    )*/}
-            {/*})}*/}
         </Grid>
     )
 }

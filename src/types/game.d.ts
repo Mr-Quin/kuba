@@ -1,8 +1,13 @@
-import { Direction, Marble } from '../store/useGameStore'
+import { Direction, Marble } from '../helpers/gameUtils'
 
 export declare namespace Game {
     type BoardState = number[]
-    type History = { board: Game.BoardState; player: Nullable<Game.Player>; marbleChange: number }
+    type History = {
+        board: Game.BoardState
+        pieces: Game.Piece[]
+        player: Nullable<Game.Player>
+        marbleChange: number
+    }
     type Captures = { [Marble.BLACK]: number; [Marble.WHITE]: number }
     type Player = Marble.BLACK | Marble.WHITE
     type Vector = number
@@ -14,5 +19,10 @@ export declare namespace Game {
         captures: Captures
         turn: number
         currentPlayer: Nullable<Game.Player>
+    }
+    type Piece = {
+        pos: Game.Vector
+        color: Marble
+        id: number
     }
 }

@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import Typography from '@material-ui/core/Typography'
 import { makeStyles } from '@material-ui/core/styles'
-import useGameStore, { Marble } from '../store/useGameStore'
+import useGameStore from '../store/useGameStore'
 import { Backdrop, Card, CardActions, CardContent, Snackbar } from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
 import { properCase } from '../helpers/helpers'
 import { Undo, Reset, ExportGame } from './actions'
+import { Marble } from '../helpers/gameUtils'
 
 const useStyles = makeStyles({
     root: {
