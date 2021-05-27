@@ -43,7 +43,7 @@ export const edgeMovesTable: Record<Direction, Set<Game.Vector>> = {
     [Direction.LEFT]: new Set([0, 7, 14, 21, 28, 35, 42]),
     [Direction.RIGHT]: new Set([6, 13, 20, 27, 34, 41, 48]),
     [Direction.UP]: new Set([0, 1, 2, 3, 4, 5, 6]),
-    [Direction.DOWN]: new Set([43, 44, 45, 46, 47, 48]),
+    [Direction.DOWN]: new Set([42, 43, 44, 45, 46, 47, 48]),
 }
 
 export const otherPlayerTable: Record<Game.Player, Game.Player> = {
@@ -120,7 +120,7 @@ export const decodeGameState = (gameString: string) => {
             playerStr === undefined ? null : (marbleStrTableReverse[playerStr] as Game.Player)
         const turn = parseInt(turnStr)
 
-        Promise.all([decodeBoard(boardStr), decodeCap(capStr)])
+        Promise.all([decodeBoard(boardStr), decodeCapture(capStr)])
             .then(([board, captures]) => {
                 res({
                     board,
@@ -138,7 +138,7 @@ export const encodeGameState = (gameState: Game.GameState) => {
     const { board, captures, currentPlayer, turn } = gameState
 
     const boardStr = encodeBoard(board)
-    const capStr = encodeCap(captures)
+    const capStr = encodeCapture(captures)
     const playerStr = marbleStrTable[currentPlayer as Marble]
     const turnStr = turn.toString()
     const otherData = [capStr, turnStr, playerStr].join(' ')
@@ -172,7 +172,7 @@ const encodeBoard = (gameBoard: Game.BoardState) => {
     return boardStr.slice(0, -1)
 }
 
-const encodeCap = (captures: Game.Captures) => {
+const encodeCapture = (captures: Game.Captures) => {
     return Object.entries(captures)
         .map(([player, capCount]) => {
             return marbleStrTable[parseInt(player) as Marble] + capCount.toString()
@@ -198,7 +198,7 @@ const decodeBoard = (boardString: string): Promise<Game.BoardState> => {
     })
 }
 
-const decodeCap = (capStr: string) => {
+const decodeCapture = (capStr: string) => {
     return new Promise<Game.Captures>((res, rej) => {
         if (capStr.length !== 4) rej('Capture: Incorrect notation')
         const capture = Object.fromEntries(
