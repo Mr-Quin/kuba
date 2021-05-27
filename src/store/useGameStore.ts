@@ -2,9 +2,9 @@ import create from 'zustand'
 import { Game } from '../types/game'
 import {
     getLast,
+    getWindowHash,
     invertVector,
     properCase,
-    getWindowHash,
     setWindowHash,
     sumVector,
 } from '../helpers/helpers'
@@ -40,7 +40,12 @@ export interface GameStore {
     undo: () => void
     commitChange: () => void
     discardChange: () => void
-    moveSeries: (pos: Game.Vector, next: (arg: any) => any, dir: Direction, prev?: Marble) => void
+    moveSeries: (
+        pos: Game.Vector,
+        next: (arg: any) => any,
+        dir: Direction,
+        prev?: Marble
+    ) => Promise<void>
     getSeries: (
         pos: Game.Vector,
         next: (arg: any) => any,
@@ -49,7 +54,7 @@ export interface GameStore {
     ) => Game.Series
     getMarble: (pos: Game.Vector) => Marble
     setMarble: (pos: Game.Vector, marble: Marble) => void
-    countMarble: (board: Game.BoardState) => Game.MarbleCount
+    countMarble: (board: Game.Piece[]) => Game.MarbleCount
     findMoves: (player: Game.Player) => Game.Move[]
     modifyCapture: (player: Game.Player, amount: number) => void
     validateBoard: (player: Game.Player) => void
@@ -99,7 +104,9 @@ const useGameStore = create<GameStore>((set, get) => ({
             return
         }
 
-        moveSeries(pos, nextPos, direction)
+        moveSeries(pos, nextPos, direction).then(() => {
+            // console.log(get().pieces, get().simPieces)
+        })
 
         // validate board
         try {
@@ -111,8 +118,8 @@ const useGameStore = create<GameStore>((set, get) => ({
         }
 
         const opponent = getOtherPlayer(currentColor)
-        const marbleCount = countMarble(get().currentBoard)
-        const newMarbleCount = countMarble(get().simBoard)
+        const marbleCount = countMarble(get().pieces)
+        const newMarbleCount = countMarble(get().simPieces)
 
         const opponentMarbleDiff = marbleCount[opponent] - newMarbleCount[opponent]
         const redMarbleDiff = marbleCount[Marble.RED] - newMarbleCount[Marble.RED]
@@ -167,24 +174,15 @@ const useGameStore = create<GameStore>((set, get) => ({
     moveOne: ([pos, dir]: Game.Move) => {
         const { getMarble, setMarble } = get()
 
-        if (isEdgeMove([pos, dir])) {
-            set({
-                simPieces: get().simPieces.map((piece) => {
-                    if (piece.pos === pos) {
-                        return { ...piece, pos: Position.OFF_GRID }
-                    }
-                    return piece
-                }),
-            })
-            return
-        }
+        const edgeMove = isEdgeMove([pos, dir])
 
         const curMarble = getMarble(pos)
         const prevPos = sumVector(pos, vectorTable[dir])
 
         const pieces = get().simPieces.map((piece) => {
             if (piece.pos === pos) {
-                return { ...piece, pos: prevPos }
+                // only update the position
+                return { ...piece, pos: edgeMove ? Position.OFF_GRID : prevPos }
             }
             return piece
         })
@@ -241,9 +239,9 @@ const useGameStore = create<GameStore>((set, get) => ({
         }
     },
     countMarble: (board) => {
-        return board.reduce<Game.MarbleCount>((acc, cur) => {
-            if (acc[cur] === undefined) return { ...acc, [cur]: 1 }
-            return { ...acc, [cur]: acc[cur] + 1 }
+        return board.reduce<Game.MarbleCount>((acc, { color: cur, pos, id }) => {
+            if (pos === Position.OFF_GRID) return acc
+            return { ...acc, [cur]: acc[cur] === undefined ? 1 : acc[cur] + 1 }
         }, {})
     },
     modifyCapture: (player, amount) => {
@@ -256,9 +254,9 @@ const useGameStore = create<GameStore>((set, get) => ({
         return []
     },
     validateBoard: (player) => {
-        const { boardHistory, simBoard, currentBoard, countMarble } = get()
-        const currentMarble = countMarble(currentBoard)
-        const simMarble = countMarble(simBoard)
+        const { boardHistory, simBoard, currentBoard, countMarble, pieces, simPieces } = get()
+        const currentMarble = countMarble(pieces)
+        const simMarble = countMarble(simPieces)
         // player cannot push off own marble
         if (simMarble[player] < currentMarble[player]) {
             throw Error('Cannot push off own marble')
