@@ -1,6 +1,5 @@
 import Paper from '@material-ui/core/Paper'
-import React, { memo, useCallback, useEffect, useState } from 'react'
-import useDisplayStore, { DisplayStore } from '../store/useDisplayStore'
+import React, { memo, useCallback, useEffect, useMemo } from 'react'
 import useGameStore, { GameStore } from '../store/useGameStore'
 import { createStyles, makeStyles } from '@material-ui/core/styles'
 import { Direction } from '../helpers/gameUtils'
@@ -11,6 +10,9 @@ import { useSpring, animated } from 'react-spring'
 interface Props {
     color: 'red' | 'black' | 'white' | 'empty'
     pos: Game.Vector
+    x: number
+    y: number
+    size: number
 }
 
 const useStyles = makeStyles(() =>
@@ -31,7 +33,6 @@ const useStyles = makeStyles(() =>
             border: 0,
             borderRadius: '50%',
             aspectRatio: '1',
-            touchAction: 'none',
             position: 'absolute',
             cursor: (props: Props) =>
                 props.color === 'empty' || props.color === 'red' ? 'default' : 'pointer',
@@ -48,6 +49,10 @@ const useStyles = makeStyles(() =>
                 }
             },
             userSelect: 'none',
+            touchAction: 'none',
+            '&focus': {
+                outline: 'none !important',
+            },
         },
     })
 )
@@ -68,13 +73,11 @@ const gameStoreSelector = (state: GameStore) => state.makeMove
 const AnimatedPaper = animated(Paper)
 
 const MarblePiece = memo((props: Props) => {
-    const { color, pos } = props
+    const { color, pos, size, x: locX, y: locY } = props
+
     const classes = useStyles(props)
     const makeMove = useGameStore(gameStoreSelector)
-    const [gridSize, calc] = useDisplayStore(
-        useCallback((state: DisplayStore) => [state.gridSize, state.calcPos], [])
-    )
-    const [position, setPosition] = useState(calc(pos))
+    const loc = useMemo(() => ({ x: locX, y: locY }), [locX, locY])
 
     const handleDrag = useCallback(
         (dir: Direction) => {
@@ -83,13 +86,11 @@ const MarblePiece = memo((props: Props) => {
         [pos, makeMove]
     )
 
-    const [{ x, y }, setSpring] = useSpring(() => calc(pos))
+    const [{ x, y }, setSpring] = useSpring(() => loc)
 
     useEffect(() => {
-        const newPos = calc(pos)
-        setSpring(newPos)
-        setPosition(newPos)
-    }, [pos, calc, setSpring])
+        setSpring(loc)
+    }, [loc, pos, setSpring])
 
     const bind = useDrag(
         ({ down, movement: [mx, my], distance }) => {
@@ -97,8 +98,8 @@ const MarblePiece = memo((props: Props) => {
             const trigger = distance > 30
             const dir = mapDir([mx, my])
             setSpring({
-                x: down ? position.x + mx : position.x,
-                y: down ? position.y + my : position.y,
+                x: down ? loc.x + mx : loc.x,
+                y: down ? loc.y + my : loc.y,
             })
             if (!down && trigger) handleDrag(dir)
         },
@@ -106,7 +107,7 @@ const MarblePiece = memo((props: Props) => {
     )
 
     return (
-        <AnimatedPaper className={classes.root} {...bind()} style={{ x, y, width: gridSize * 0.8 }}>
+        <AnimatedPaper className={classes.root} {...bind()} style={{ x, y, width: size }}>
             {/*{pos}*/}
         </AnimatedPaper>
     )
