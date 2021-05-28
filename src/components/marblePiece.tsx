@@ -57,8 +57,7 @@ const useStyles = makeStyles(() =>
     })
 )
 
-const mapDir = (xyDir: [number, number]) => {
-    const [x, y] = xyDir
+const mapDir = ([x, y]: [number, number]) => {
     if (x === 0) {
         if (y > 0) return Direction.DOWN
         return Direction.UP

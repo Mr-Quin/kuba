@@ -32,21 +32,20 @@ const Board = () => {
     return (
         <Grid className={classes.grid} container>
             <BoardGrid />
-            {marbles
-                .filter((marble) => marble.pos !== Position.OFF_GRID)
-                .map((marble) => {
-                    const { x, y } = calc(marble.pos)
-                    return (
-                        <MarblePiece
-                            color={Marble[marble.color].toLowerCase() as any}
-                            size={gridSize * 0.8}
-                            pos={marble.pos}
-                            x={x}
-                            y={y}
-                            key={marble.id}
-                        />
-                    )
-                })}
+            {marbles.map((marble) => {
+                if (marble.pos === Position.OFF_GRID) return <></>
+                const { x, y } = calc(marble.pos)
+                return (
+                    <MarblePiece
+                        color={Marble[marble.color].toLowerCase() as any}
+                        size={gridSize * 0.8}
+                        pos={marble.pos}
+                        x={x}
+                        y={y}
+                        key={marble.id}
+                    />
+                )
+            })}
         </Grid>
     )
 }
