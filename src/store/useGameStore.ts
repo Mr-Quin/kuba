@@ -51,7 +51,7 @@ export interface GameStore {
     findMoves: (player: Game.Player) => Game.Move[]
     modifyCapture: (player: Game.Player, amount: number) => void
     validateBoard: () => Voidable<string>
-    validateMove: (move: Game.Move, series: Game.Series) => Voidable<string>
+    checkMove: (move: Game.Move, series: Game.Series) => Voidable<string>
     setError: (errMessage: Error | string) => void
     reset: () => void
     init: () => void
@@ -183,14 +183,14 @@ const useGameStore = create<GameStore>((set, get) => ({
                 getSeries,
                 moveOneTowards,
                 setMarble,
-                validateMove,
+                checkMove,
                 validateBoard,
                 discardChange,
             } = get()
 
             const marbleSeries = getSeries(pos, next, dir)
 
-            const preMsg = validateMove([pos, dir], marbleSeries)
+            const preMsg = checkMove([pos, dir], marbleSeries)
             if (preMsg) {
                 rej(preMsg)
                 return
@@ -255,7 +255,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         if (!compareBoards(simBoard, getLast(boardHistory).board))
             return "Cannot revert opponent's move"
     },
-    validateMove: ([pos, dir], series) => {
+    checkMove: ([pos, dir], series) => {
         const { winner, currentPlayer, getMarble } = get()
         const oppoDir = otherDirectionTable[dir]
         const oppoDirVec = vectorTable[oppoDir]
@@ -267,10 +267,11 @@ const useGameStore = create<GameStore>((set, get) => ({
             !(isEmpty(getMarble(sumVector(pos, oppoDirVec))) || isEdgeMove([pos, oppoDir]))
         ) {
             return 'Cannot push in this direction'
-        } else if (isEdgeMove([last, dir])) {
-            return 'Cannot push off own marble'
-        } else if (currentPlayer !== null && getMarble(pos) !== currentPlayer)
+        } else if (currentPlayer !== null && getMarble(pos) !== currentPlayer) {
             return `${properCase(Marble[currentPlayer])}'s turn`
+        } else if (isEdgeMove([last, dir]) && getMarble(last) === currentPlayer) {
+            return 'Cannot push off own marble'
+        }
     },
     setError: (errMessage) => {
         // randomized update number to trigger error component re-render
