@@ -4,8 +4,8 @@ import Grid from '@material-ui/core/Grid'
 import useGameStore, { GameStore } from '../store/useGameStore'
 import MarblePiece from './marblePiece'
 import BoardGrid from './boardGrid'
-import { Marble, Position } from '../helpers/gameUtils'
 import useDisplayStore, { DisplayStore } from '../store/useDisplayStore'
+import { Marble, Position } from '../helpers/game/consts'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
@@ -33,7 +33,7 @@ const Board = () => {
         <Grid className={classes.grid} container>
             <BoardGrid />
             {marbles.map((marble) => {
-                if (marble.pos === Position.OFF_GRID) return <></>
+                if (marble.pos === Position.OFF_GRID) return null
                 const { x, y } = calc(marble.pos)
                 return (
                     <MarblePiece

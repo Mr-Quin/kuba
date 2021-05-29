@@ -1,2 +1,2 @@
 type Nullable<t> = t | null
-type Voidable<t> = t | void
+type Voidable<t> = t | undefined

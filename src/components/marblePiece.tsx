@@ -2,10 +2,10 @@ import Paper from '@material-ui/core/Paper'
 import React, { memo, useCallback, useEffect, useMemo } from 'react'
 import useGameStore, { GameStore } from '../store/useGameStore'
 import { createStyles, makeStyles } from '@material-ui/core/styles'
-import { Direction } from '../helpers/gameUtils'
 import { Game } from '../types/game'
 import { useDrag } from 'react-use-gesture'
 import { useSpring, animated } from 'react-spring'
+import { Direction } from '../helpers/game/consts'
 
 interface Props {
     color: 'red' | 'black' | 'white' | 'empty'
@@ -76,7 +76,7 @@ const MarblePiece = memo((props: Props) => {
 
     const classes = useStyles(props)
     const makeMove = useGameStore(gameStoreSelector)
-    const loc = useMemo(() => ({ x: locX, y: locY }), [locX, locY])
+    const spring = useMemo(() => ({ x: locX, y: locY }), [locX, locY])
 
     const handleDrag = useCallback(
         (dir: Direction) => {
@@ -85,11 +85,13 @@ const MarblePiece = memo((props: Props) => {
         [pos, makeMove]
     )
 
-    const [{ x, y }, setSpring] = useSpring(() => loc)
+    const [{ x, y }, setSpring] = useSpring(() => {
+        return { from: spring, config: { mass: 1, tension: 225, friction: 30 } }
+    })
 
     useEffect(() => {
-        setSpring(loc)
-    }, [loc, pos, setSpring])
+        setSpring(spring)
+    }, [spring, setSpring])
 
     const bind = useDrag(
         ({ down, movement: [mx, my], distance }) => {
@@ -97,8 +99,8 @@ const MarblePiece = memo((props: Props) => {
             const trigger = distance > 30
             const dir = mapDir([mx, my])
             setSpring({
-                x: down ? loc.x + mx : loc.x,
-                y: down ? loc.y + my : loc.y,
+                x: down ? spring.x + mx : spring.x,
+                y: down ? spring.y + my : spring.y,
             })
             if (!down && trigger) handleDrag(dir)
         },

@@ -6,8 +6,8 @@ import { Backdrop, Card, CardActions, CardContent, Snackbar } from '@material-ui
 import { Alert } from '@material-ui/lab'
 import { properCase } from '../helpers/helpers'
 import { Undo, Reset, ExportGame } from './actions'
-import { Marble } from '../helpers/gameUtils'
 import { useTranslation } from 'react-i18next'
+import { Marble } from '../helpers/game/consts'
 
 const useStyles = makeStyles({
     root: {
