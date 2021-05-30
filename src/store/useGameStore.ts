@@ -9,6 +9,7 @@ import {
     getNext,
     getOtherDirection,
     getOtherPlayer,
+    getPrev,
     initHash,
     isEdgeMove,
     isEmpty,
@@ -182,12 +183,10 @@ const useGameStore = create<GameStore>((set, get) => ({
     simulateHash: (dir) => (series) => {
         const { hashTable, getMarble, hash } = get()
 
-        const table = series.map<[Game.Vector, Marble]>((pos) => [pos, getMarble(pos)])
-
         // series cannot contain empty marble
-        return table.reduce((acc, [fromPos, marble], i) => {
-            const toPos = sumVector(fromPos, vectorTable[dir])
-
+        return series.reduce((acc, fromPos, i) => {
+            const marble = getMarble(fromPos)
+            const toPos = getNext([fromPos, dir])
             // edge move can only happen on idx = 1
             if (i === 0 && isEdgeMove([fromPos, dir])) {
                 return acc ^ hashTable[fromPos][marble]
@@ -298,8 +297,7 @@ const useGameStore = create<GameStore>((set, get) => ({
     checkMove: ([pos, dir], series, player) => {
         const { winner, currentPlayer, getMarble, simulateHash, boardHistory } = get()
         const oppoDir = getOtherDirection(dir)
-        const oppoDirVec = vectorTable[oppoDir]
-        const prevPos = sumVector(pos, oppoDirVec)
+        const prevPos = getPrev([pos, dir])
         const last = series[0]
         const curPlayer = player ?? currentPlayer
 
