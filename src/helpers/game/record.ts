@@ -3,16 +3,19 @@ import { chunk } from '../helpers'
 import { boardTo2D } from './util'
 import { Marble, marbleStrTable, marbleStrTableReverse } from './consts'
 
-// encode state in the form 'board-capture-turnCount-player'. Player is nullable
+const nullChar = '-'
+
+// encode state in the form 'board-capture turnCount currentPlayer'. Player is nullable
 export const encodeGameState = (gameState: Game.GameState) => {
     const { board, captures, currentPlayer, turn } = gameState
 
     const boardStr = encodeBoard(board)
     const capStr = encodeCapture(captures)
-    const playerStr = marbleStrTable[currentPlayer as Marble]
+    const playerStr = currentPlayer !== null ? marbleStrTable[currentPlayer as Marble] : nullChar
     const turnStr = turn.toString()
-    const otherData = [capStr, turnStr, playerStr].join(' ')
-    const gameStr = [boardStr, otherData].join('-')
+    const gameStr = [boardStr, capStr, turnStr, playerStr].join(' ')
+
+    console.log(gameStr)
 
     return btoa(gameStr)
 }
@@ -56,11 +59,10 @@ export const decodeGameState = (gameString: string) =>
 
         if (!decodedStr) rej('Empty string')
 
-        const [boardStr, otherStr] = decodedStr.split('-')
-        const [capStr, turnStr, playerStr] = otherStr.split(' ')
+        const [boardStr, capStr, turnStr, playerStr] = decodedStr.split(' ')
 
         const currentPlayer =
-            playerStr === undefined ? null : (marbleStrTableReverse[playerStr] as Game.Player)
+            playerStr === nullChar ? null : (marbleStrTableReverse[playerStr] as Game.Player)
         const turn = parseInt(turnStr)
 
         Promise.all([decodeBoard(boardStr), decodeCapture(capStr)])

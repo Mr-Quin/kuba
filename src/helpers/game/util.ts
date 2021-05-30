@@ -6,6 +6,7 @@ import {
     Marble,
     otherDirectionTable,
     otherPlayerTable,
+    Reason,
     vectorTable,
 } from './consts'
 
@@ -36,10 +37,18 @@ export const createBoard = () => {
 
 export const boardTo2D = (board: Game.BoardState) => chunk(board, 7)
 
-export const countMoves = (moves: Game.MoveTable) =>
-    Object.values(moves).reduce((acc, cur) => {
-        return acc + Object.values(cur).filter((reason) => reason !== null).length
-    }, 0)
+export const countMoves = (moves: Game.MoveTable, player: Game.Player) =>
+    Object.values(moves)
+        .filter(({ color }) => color === player)
+        .reduce((acc, { moves }) => {
+            return (
+                acc +
+                Object.values(moves).reduce((acc, reason) => {
+                    if (reason !== Reason.NONE) return acc + 1
+                    return acc
+                }, 0)
+            )
+        }, 0)
 
 export const isEmpty = (marble: Marble) => marble === Marble.EMPTY
 
