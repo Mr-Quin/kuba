@@ -15,8 +15,6 @@ export const encodeGameState = (gameState: Game.GameState) => {
     const turnStr = turn.toString()
     const gameStr = [boardStr, capStr, turnStr, playerStr].join(' ')
 
-    console.log(gameStr)
-
     return btoa(gameStr)
 }
 
