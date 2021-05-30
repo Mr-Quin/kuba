@@ -1,5 +1,5 @@
 import { Game } from '../../types/game'
-import { chunk, sumVector } from '../helpers'
+import { chunk, invertVector, sumVector } from '../helpers'
 import {
     Direction,
     edgeMovesTable,
@@ -20,6 +20,8 @@ export const getOtherDirection = (direction: Direction) => otherDirectionTable[d
 export const isEdgeMove = ([pos, dir]: Game.Move) => edgeMovesTable[dir].has(pos)
 
 export const getNext = ([pos, dir]: Game.Move) => sumVector(vectorTable[dir], pos)
+
+export const getPrev = ([pos, dir]: Game.Move) => sumVector(invertVector(vectorTable[dir]), pos)
 
 export const createBoard = () => {
     const [X, B, W, R] = [Marble.EMPTY, Marble.BLACK, Marble.WHITE, Marble.RED]
