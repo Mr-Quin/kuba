@@ -18,31 +18,31 @@ export const encodeGameState = (gameState: Game.GameState) => {
     return btoa(gameStr)
 }
 
-// TODO: refactor into functional
-const encodeBoard = (gameBoard: Game.BoardState) => {
-    let boardStr = ''
-    let spaceCount = 0
+const encodeBoard = (gameBoard: Game.BoardState) =>
+    boardTo2D(gameBoard)
+        .reduce((rowAcc, row) => {
+            let count = 0
 
-    for (const row of boardTo2D(gameBoard)) {
-        for (const cell of row) {
-            if (cell === Marble.EMPTY) {
-                spaceCount += 1
-            } else if (spaceCount > 0) {
-                boardStr += spaceCount.toString()
-                boardStr += marbleStrTable[cell as Marble]
-                spaceCount = 0
+            const rowStr = row.reduce((cellAcc, cell) => {
+                if (cell === Marble.EMPTY) {
+                    count += 1
+                    return cellAcc
+                } else if (count > 0) {
+                    const newStr = cellAcc + count.toString() + marbleStrTable[cell]
+                    count = 0
+                    return newStr
+                } else {
+                    return cellAcc + marbleStrTable[cell]
+                }
+            }, rowAcc)
+
+            if (count > 0) {
+                return rowStr + count.toString() + '/'
             } else {
-                boardStr += marbleStrTable[cell as Marble]
+                return rowStr + '/'
             }
-        }
-        if (spaceCount > 0) {
-            boardStr += spaceCount.toString()
-            spaceCount = 0
-        }
-        boardStr += '/'
-    }
-    return boardStr.slice(0, -1)
-}
+        }, '')
+        .slice(0, -1)
 
 const encodeCapture = (captures: Game.Captures) =>
     Object.entries(captures)
