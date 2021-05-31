@@ -14,9 +14,7 @@ export const getOtherPlayer = (currentPlayer: Game.Player) => otherPlayerTable[c
 
 export const getOtherDirection = (direction: Direction) => otherDirectionTable[direction]
 
-/**
- * Determine if move will push piece off of board
- */
+// TODO: maybe these should return a function based on dir
 export const isEdgeMove = ([pos, dir]: Game.Move) => edgeMovesTable[dir].has(pos)
 
 export const getNext = ([pos, dir]: Game.Move) => sumVector(vectorTable[dir], pos)
