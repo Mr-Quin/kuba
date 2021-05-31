@@ -7,6 +7,13 @@ i18n.use(initReactI18next)
             en: {
                 translation: {
                     title: 'Kuba',
+                    black: 'Black',
+                    white: 'White',
+                    anyone: 'Anyone',
+                    undo: 'Undo',
+                    reset: 'Reset',
+                    export: 'Export game state',
+                    allowExtra: 'Allow extra turn',
                 },
             },
         },
