@@ -1,5 +1,5 @@
 import Paper from '@material-ui/core/Paper'
-import React, { memo, useCallback, useEffect, useMemo } from 'react'
+import React, { memo, useCallback, useEffect } from 'react'
 import useGameStore, { GameStore } from '../store/useGameStore'
 import { createStyles, makeStyles } from '@material-ui/core/styles'
 import { Game } from '../types/game'
