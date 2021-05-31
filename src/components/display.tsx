@@ -5,7 +5,7 @@ import useGameStore from '../store/useGameStore'
 import { Backdrop, Card, CardActions, CardContent, Snackbar } from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
 import { properCase } from '../helpers/helpers'
-import { Undo, Reset, ExportGame } from './actions'
+import { Undo, Reset, ExportGame, ExtraTurnButton } from './actions'
 import { useTranslation } from 'react-i18next'
 import { Marble } from '../helpers/game/consts'
 
@@ -70,10 +70,11 @@ const Display = () => {
                     </Typography>
                     <Typography>
                         Turn {turn},{' '}
-                        {currentPlayer !== null ? properCase(Marble[currentPlayer]) : 'Anyone'}
+                        {currentPlayer !== null ? properCase(Marble[currentPlayer]) : t('anyone')}
                     </Typography>
                     <Typography>
-                        Captures: White: {captures[Marble.WHITE]}, Black: {captures[Marble.BLACK]}
+                        Captures: {t('white')}: {captures[Marble.WHITE]}, {t('black')}:{' '}
+                        {captures[Marble.BLACK]}
                     </Typography>
                     <Snackbar
                         open={alertOpen}
@@ -89,9 +90,10 @@ const Display = () => {
                     </Snackbar>
                 </CardContent>
                 <CardActions>
-                    <Undo />
-                    <Reset />
-                    <ExportGame />
+                    <Undo>{t('undo')}</Undo>
+                    <Reset>{t('reset')}</Reset>
+                    <ExportGame>{t('export')}</ExportGame>
+                    <ExtraTurnButton label={t('allowExtra')} />
                 </CardActions>
             </Card>
 
