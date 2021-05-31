@@ -2,7 +2,7 @@ import { Game } from '../types/game'
 
 export const getLast = <t>(arr: t[]): t => arr[arr.length - 1]
 
-export const invertVector = (vector: Game.Vector) => -vector
+export const negateVector = (vector: Game.Vector) => -vector
 
 export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => vector1 + vector2
 
