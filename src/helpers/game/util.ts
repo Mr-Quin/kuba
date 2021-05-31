@@ -1,5 +1,5 @@
 import { Game } from '../../types/game'
-import { chunk, invertVector, sumVector } from '../helpers'
+import { chunk, negateVector, sumVector } from '../helpers'
 import {
     Direction,
     edgeMovesTable,
@@ -21,7 +21,7 @@ export const isEdgeMove = ([pos, dir]: Game.Move) => edgeMovesTable[dir].has(pos
 
 export const getNext = ([pos, dir]: Game.Move) => sumVector(vectorTable[dir], pos)
 
-export const getPrev = ([pos, dir]: Game.Move) => sumVector(invertVector(vectorTable[dir]), pos)
+export const getPrev = ([pos, dir]: Game.Move) => sumVector(negateVector(vectorTable[dir]), pos)
 
 export const createBoard = () => {
     const [X, B, W, R] = [Marble.EMPTY, Marble.BLACK, Marble.WHITE, Marble.RED]
@@ -46,17 +46,24 @@ export const countMoves = (moves: Game.MoveTable, player: Game.Player) =>
             return (
                 acc +
                 Object.values(moves).reduce((acc, reason) => {
-                    if (reason !== Reason.NONE) return acc + 1
+                    if (reason === Reason.NONE) return acc + 1
                     return acc
                 }, 0)
             )
         }, 0)
 
-export const isEmpty = (marble: Marble) => marble === Marble.EMPTY
+export const countMarble = (board: Game.BoardState) => {
+    return board.reduce<Game.MarbleCount>((acc, cur) => {
+        if (cur === Marble.EMPTY) return acc
+        return { ...acc, [cur]: acc[cur] === undefined ? 1 : acc[cur] + 1 }
+    }, {})
+}
+
+export const isMarbleEmpty = (marble: Marble) => marble === Marble.EMPTY
 
 export const boardToPieces = (board: Game.BoardState) =>
     board.reduce<Game.Piece[]>((acc, cur, i) => {
-        if (!isEmpty(cur)) {
+        if (!isMarbleEmpty(cur)) {
             return [...acc, { pos: i, color: cur, id: i }]
         }
         return acc
