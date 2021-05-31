@@ -1,13 +1,11 @@
 import React, { useCallback, useEffect, useState } from 'react'
 import Typography from '@material-ui/core/Typography'
 import { makeStyles } from '@material-ui/core/styles'
-import useGameStore from '../store/useGameStore'
+import useGameStore, { Marble } from '../store/useGameStore'
 import { Backdrop, Card, CardActions, CardContent, Snackbar } from '@material-ui/core'
 import { Alert } from '@material-ui/lab'
 import { properCase } from '../helpers/helpers'
-import { Undo, Reset, ExportGame, ExtraTurnButton } from './actions'
-import { useTranslation } from 'react-i18next'
-import { Marble } from '../helpers/game/consts'
+import { Undo, Reset, ExportGame } from './actions'
 
 const useStyles = makeStyles({
     root: {
@@ -27,7 +25,6 @@ const Display = () => {
     const classes = useStyles()
     const [alertOpen, setAlertOpen] = useState(false)
     const [backDropOpen, setBackDropOpen] = useState(false)
-    const { t } = useTranslation()
     const [turn, currentPlayer, error, captures, winner] = useGameStore(
         useCallback(
             (state) => [
@@ -66,15 +63,14 @@ const Display = () => {
             <Card className={classes.root} variant={'elevation'}>
                 <CardContent>
                     <Typography className={classes.title} variant="h1" component="h1" gutterBottom>
-                        {t('title')}
+                        Kuba
                     </Typography>
                     <Typography>
                         Turn {turn},{' '}
-                        {currentPlayer !== null ? properCase(Marble[currentPlayer]) : t('anyone')}
+                        {currentPlayer !== null ? properCase(Marble[currentPlayer]) : 'Anyone'}
                     </Typography>
                     <Typography>
-                        Captures: {t('white')}: {captures[Marble.WHITE]}, {t('black')}:{' '}
-                        {captures[Marble.BLACK]}
+                        Captures: White: {captures[Marble.WHITE]}, Black: {captures[Marble.BLACK]}
                     </Typography>
                     <Snackbar
                         open={alertOpen}
@@ -90,10 +86,9 @@ const Display = () => {
                     </Snackbar>
                 </CardContent>
                 <CardActions>
-                    <Undo>{t('undo')}</Undo>
-                    <Reset>{t('reset')}</Reset>
-                    <ExportGame>{t('export')}</ExportGame>
-                    <ExtraTurnButton label={t('allowExtra')} />
+                    <Undo />
+                    <Reset />
+                    <ExportGame />
                 </CardActions>
             </Card>
 
