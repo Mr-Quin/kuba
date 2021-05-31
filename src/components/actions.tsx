@@ -2,44 +2,34 @@ import React, { memo, useCallback, useState } from 'react'
 import { Button, Snackbar } from '@material-ui/core'
 import useGameStore, { GameStore } from '../store/useGameStore'
 import { Alert } from '@material-ui/lab'
-import FormControlLabel from '@material-ui/core/FormControlLabel'
-import Checkbox from '@material-ui/core/Checkbox'
 
-export const Undo = memo((props) => {
+export const Undo = memo(() => {
     const [handleUndo, history] = useGameStore(
         useCallback((state: GameStore) => [state.undo, state.boardHistory], [])
     )
     return (
         <Button variant="contained" disabled={history.length === 0} onClick={handleUndo}>
-            {props.children}
+            Undo
         </Button>
     )
 })
 
-export const Reset = memo((props) => {
+export const Reset = memo(() => {
     const handleReset = useGameStore(useCallback((state: GameStore) => state.reset, []))
     return (
         <Button variant="contained" color="secondary" onClick={handleReset}>
-            {props.children}
+            Reset
         </Button>
     )
 })
 
-export const EndTurn = memo((props) => {
-    const handleEndTurn = useGameStore(useCallback((state) => state.endTurn, []))
-    return (
-        <Button variant="contained" color="secondary" onClick={handleEndTurn}>
-            {props.children}
-        </Button>
-    )
-})
-
-export const ExportGame = memo((props) => {
+export const ExportGame = memo(() => {
     const [messageOpen, setMessageOpen] = useState(false)
 
     const handleExport = useCallback(() => {
         navigator.clipboard.writeText(window.location.href).then(() => {
             setMessageOpen(true)
+            console.log('Copied to clipboard')
         })
     }, [])
 
@@ -50,7 +40,7 @@ export const ExportGame = memo((props) => {
     return (
         <>
             <Button variant="contained" onClick={handleExport}>
-                {props.children}
+                Export game state
             </Button>
             <Snackbar
                 open={messageOpen}
@@ -65,17 +55,5 @@ export const ExportGame = memo((props) => {
                 />
             </Snackbar>
         </>
-    )
-})
-
-export const ExtraTurnButton = memo((props: { label: string }) => {
-    const [checked, handleToggle] = useGameStore(
-        useCallback((state) => [state.allowExtraTurns, state.toggleExtraTurn], [])
-    )
-    return (
-        <FormControlLabel
-            control={<Checkbox checked={checked} onChange={handleToggle} />}
-            label={props.label}
-        />
     )
 })
