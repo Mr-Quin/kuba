@@ -76,7 +76,6 @@ const MarblePiece = memo((props: Props) => {
 
     const classes = useStyles(props)
     const makeMove = useGameStore(gameStoreSelector)
-    const spring = useMemo(() => ({ x: locX, y: locY }), [locX, locY])
 
     const handleDrag = useCallback(
         (dir: Direction) => {
@@ -86,23 +85,22 @@ const MarblePiece = memo((props: Props) => {
     )
 
     const [{ x, y }, setSpring] = useSpring(() => {
-        return { from: spring, config: { mass: 1, tension: 225, friction: 30 } }
+        return { from: { x: locX, y: locY }, config: { mass: 1, tension: 225, friction: 30 } }
     })
 
     useEffect(() => {
-        setSpring(spring)
-    }, [spring, setSpring])
+        setSpring({ x: locX, y: locY })
+    }, [locX, locY, setSpring])
 
     const bind = useDrag(
         ({ down, movement: [mx, my], distance }) => {
             if (!(color === 'black' || color === 'white')) return
             const trigger = distance > 30
-            const dir = mapDir([mx, my])
             setSpring({
-                x: down ? spring.x + mx : spring.x,
-                y: down ? spring.y + my : spring.y,
+                x: down ? locX + mx : locX,
+                y: down ? locY + my : locY,
             })
-            if (!down && trigger) handleDrag(dir)
+            if (!down && trigger) handleDrag(mapDir([mx, my]))
         },
         { lockDirection: true }
     )

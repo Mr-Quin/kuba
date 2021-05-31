@@ -52,13 +52,12 @@ export interface GameStore {
     simulateMove: (dir: Direction) => (series: Game.Series) => Game.Hash
     turn: number
     undo: () => void
-    checkWinner: (move: Game.Move) => Promise<Game.Move>
-    checkTurn: (move: Game.Move) => Promise<Game.Move>
+    preCheckMove: (move: Game.Move) => Promise<Game.Move>
     pushHistory: () => void
     winner: Nullable<Game.Player>
 }
 
-const useGameStore = create<GameStore>((set, get) => ({
+const gameInitState = {
     board: [],
     boardHistory: [],
     pieces: [],
@@ -70,33 +69,27 @@ const useGameStore = create<GameStore>((set, get) => ({
     hashTable: initHash(),
     hash: 0,
     errorMessage: { message: '', update: 0 },
+}
+
+const useGameStore = create<GameStore>((set, get) => ({
+    ...gameInitState,
     makeMove: ([pos, direction]) => {
         const {
-            winner,
             getMarble,
             currentPlayer,
             shiftMarbles,
             boardHistory,
-            modifyCapture,
-            modifyTurn,
             encode,
-            setError,
             searchMoves,
-            checkWinner,
-            checkTurn,
+            preCheckMove,
         } = get()
-
-        if (winner !== null) {
-            setError(reasonTable[Reason.GAME_OVER])
-            return
-        }
 
         // TODO: player should be returned by shiftMarble
         const player = getMarble(pos) as Game.Player // current color should eq current player
 
-        checkWinner([pos, direction])
-            .then(checkTurn)
+        preCheckMove([pos, direction])
             .then(shiftMarbles)
+            // shiftMarbles([pos, direction])
             .then((hash) => {
                 set({ hash })
                 // the board has been successfully modified
@@ -109,31 +102,31 @@ const useGameStore = create<GameStore>((set, get) => ({
                 const changePlayer =
                     currentPlayer === null || (opponentMarbleDiff === 0 && redMarbleDiff === 0)
 
-                const opponentMoves = searchMoves(opponent)
-                const myMoves = searchMoves(player)
-
                 const nextPlayer = changePlayer ? opponent : currentPlayer
-                const nextMoveTable = changePlayer ? opponentMoves : myMoves
+                const nextMoves = searchMoves(opponent)
+                const opponentMovesAmt = countMoves(nextMoves, opponent)
 
-                // apply changes
-                modifyCapture(player, redMarbleDiff)
-
-                const opponentMovesAmt = countMoves(opponentMoves, opponent)
-
-                if (
+                const playerWins =
                     prevMarbleCount[opponent] === 0 ||
                     get().captures[player] >= 7 ||
                     opponentMovesAmt === 0
-                ) {
-                    set({ winner: player, moveTable: null })
-                }
-                set({ currentPlayer: nextPlayer, moveTable: nextMoveTable })
-                if (changePlayer) modifyTurn(1)
+
+                // apply changes
+                set((state) => {
+                    const newCapAmt = state.captures[player] + redMarbleDiff
+                    return {
+                        currentPlayer: nextPlayer,
+                        moveTable: playerWins ? null : nextMoves,
+                        winner: playerWins ? player : null,
+                        turn: changePlayer ? state.turn + 1 : state.turn,
+                        captures: { ...state.captures, [player]: newCapAmt },
+                    }
+                })
 
                 // encode board
                 setWindowHash(encode())
             })
-            .catch(setError)
+            .catch(get().setError)
     },
     undo: () => {
         const { turn, boardHistory, modifyTurn, searchMoves, encode, currentPlayer } = get()
@@ -226,9 +219,9 @@ const useGameStore = create<GameStore>((set, get) => ({
             // moveTable is null on first turn
             // if reason is not none, the move is invalid
             const reason =
-                currentPlayer === null
+                currentPlayer === null || moveTable === null
                     ? checkMove([pos, dir], marbleSeries, getMarble(pos) as Game.Player)
-                    : moveTable![pos]?.moves[dir] ?? Reason.WRONG_TURN
+                    : moveTable[pos]?.moves[dir] ?? Reason.WRONG_TURN
 
             if (reason !== Reason.NONE) {
                 rej(reasonTable[reason])
@@ -277,7 +270,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         const directions = Object.values(Direction)
 
         return pieces
-            .filter((piece) => piece.color === player)
+            .filter((piece) => piece.color !== Marble.RED)
             .reduce<Game.MoveTable>((acc, { pos, color }) => {
                 const moves = directions.reduce((acc, dir) => {
                     const series = getSeries(pos, dir)
@@ -287,18 +280,14 @@ const useGameStore = create<GameStore>((set, get) => ({
                 return { ...acc, [pos]: { color: color as Game.Player, moves } }
             }, {})
     },
-    checkTurn: (move) => {
-        const { getMarble, currentPlayer } = get()
-        if (currentPlayer === null || getMarble(move[0]) === currentPlayer) {
-            return Promise.resolve(move)
-        } else {
-            return Promise.reject(reasonTable[Reason.WRONG_TURN])
-        }
-    },
-    checkWinner: (move) => {
-        const { winner } = get()
+    preCheckMove: (move) => {
+        const { getMarble, currentPlayer, winner } = get()
         if (winner === null) {
-            return Promise.resolve(move)
+            if (currentPlayer === null || getMarble(move[0]) === currentPlayer) {
+                return Promise.resolve(move)
+            } else {
+                return Promise.reject(reasonTable[Reason.WRONG_TURN])
+            }
         } else {
             return Promise.reject(reasonTable[Reason.GAME_OVER])
         }
@@ -369,6 +358,7 @@ const useGameStore = create<GameStore>((set, get) => ({
                 // create new board
                 const board = createBoard()
                 set({
+                    ...gameInitState,
                     board: board,
                     pieces: boardToPieces(board),
                 })
