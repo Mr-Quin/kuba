@@ -1,15 +1,17 @@
-import React from 'react'
+import React, { useCallback } from 'react'
 import { makeStyles, createStyles } from '@material-ui/core/styles'
-import Paper from '@material-ui/core/Paper'
 import Grid from '@material-ui/core/Grid'
-import useGameStore, { GameStore, Marble } from '../store/useGameStore'
+import useGameStore, { GameStore } from '../store/useGameStore'
 import MarblePiece from './marblePiece'
-import shallow from 'zustand/shallow'
+import BoardGrid from './boardGrid'
+import useDisplayStore, { DisplayStore } from '../store/useDisplayStore'
+import { Marble, Position } from '../helpers/game/consts'
 
 const useStyles = makeStyles((theme) =>
     createStyles({
         grid: {
             userSelect: 'none',
+            touchAction: 'none',
         },
         paper: {
             padding: theme.spacing(1),
@@ -18,36 +20,33 @@ const useStyles = makeStyles((theme) =>
     })
 )
 
-const selector = (state: GameStore) => state.currentBoard
+const selector = (state: GameStore) => state.pieces
 
 const Board = () => {
     const classes = useStyles()
-    const currentBoard = useGameStore(selector, shallow)
+    const marbles = useGameStore(selector)
+    const [gridSize, calc] = useDisplayStore(
+        useCallback((state: DisplayStore) => [state.gridSize, state.calcPos], [])
+    )
 
     return (
-        <>
-            <Grid className={classes.grid} container>
-                {currentBoard.map((row, i) => {
-                    return (
-                        <Grid container item spacing={0} key={i}>
-                            {row.map((cell, j) => {
-                                return (
-                                    <Grid item xs key={j}>
-                                        <Paper className={classes.paper} variant="outlined" square>
-                                            <MarblePiece
-                                                color={Marble[cell].toLowerCase() as any}
-                                                posRow={i}
-                                                posCol={j}
-                                            />
-                                        </Paper>
-                                    </Grid>
-                                )
-                            })}
-                        </Grid>
-                    )
-                })}
-            </Grid>
-        </>
+        <Grid className={classes.grid} container>
+            <BoardGrid />
+            {marbles.map((marble) => {
+                if (marble.pos === Position.OFF_GRID) return null
+                const { x, y } = calc(marble.pos)
+                return (
+                    <MarblePiece
+                        color={Marble[marble.color].toLowerCase() as any}
+                        size={gridSize * 0.8}
+                        pos={marble.pos}
+                        x={x}
+                        y={y}
+                        key={marble.id}
+                    />
+                )
+            })}
+        </Grid>
     )
 }
 

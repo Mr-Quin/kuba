@@ -1,21 +1,32 @@
-import { Direction, Marble } from '../store/useGameStore'
+import { Direction, Marble, Reason } from '../helpers/game/consts'
 
 export declare namespace Game {
-    type BoardState = number[][]
-    type History = { board: Game.BoardState; player: Nullable<Game.Player>; marbleChange: number }
-    type Captures = { [Marble.BLACK]: number; [Marble.WHITE]: number }
-    type Player = Marble.BLACK | Marble.WHITE
-    type Vector = [number, number]
-    type MarbleCount = { [key: number]: number }
-    type Move = [Game.Vector, Direction]
+    type BoardState = Marble[]
+    type Captures = Record<Game.Player, number>
     type GameState = {
         board: Game.BoardState
         captures: Captures
         turn: number
         currentPlayer: Nullable<Game.Player>
     }
+    type Hash = number
+    type HashTable = Uint32Array[]
+    type History = {
+        board: Game.BoardState
+        pieces: Game.Piece[]
+        player: Nullable<Game.Player>
+        captures: Game.Captures
+        hash: Game.Hash
+    }
+    type MarbleCount = Record<number, number>
+    type Move = [Game.Vector, Direction]
+    type MoveTable = Record<Game.Vector, { color: Game.Player; moves: Record<Direction, Reason> }>
     type Piece = {
         pos: Game.Vector
         color: Marble
+        id: number
     }
+    type Player = Marble.BLACK | Marble.WHITE
+    type Series = Game.Vector[]
+    type Vector = number
 }

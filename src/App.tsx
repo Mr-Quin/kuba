@@ -2,27 +2,22 @@ import React, { useEffect } from 'react'
 import Board from './components/board'
 import Display from './components/display'
 import { Container } from '@material-ui/core'
-import { makeStyles } from '@material-ui/core/styles'
 import useGameStore from './store/useGameStore'
+import i18n from './i18n/i18n'
 
-const useStyles = makeStyles({
-    root: {
-        // width: '100%',
-        // minWidth: 500,
-        // maxWidth: 700,
-    },
-})
+const useless = (any: any) => {}
 
-function App() {
-    const classes = useStyles()
+const App = () => {
     const initGame = useGameStore((state) => state.init)
+
+    useless(i18n)
 
     useEffect(() => {
         initGame()
     }, [initGame])
 
     return (
-        <Container className={classes.root} maxWidth="sm">
+        <Container maxWidth="sm">
             <Display />
             <Board />
         </Container>
