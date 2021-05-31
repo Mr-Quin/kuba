@@ -1,7 +1,7 @@
 import { Direction, Marble, Reason } from '../helpers/game/consts'
 
 export declare namespace Game {
-    type BoardState = Game.Vector[]
+    type BoardState = Marble[]
     type Captures = Record<Game.Player, number>
     type GameState = {
         board: Game.BoardState
@@ -15,7 +15,7 @@ export declare namespace Game {
         board: Game.BoardState
         pieces: Game.Piece[]
         player: Nullable<Game.Player>
-        marbleChange: number
+        captures: Game.Captures
         hash: Game.Hash
     }
     type MarbleCount = Record<number, number>
@@ -23,7 +23,7 @@ export declare namespace Game {
     type MoveTable = Record<Game.Vector, { color: Game.Player; moves: Record<Direction, Reason> }>
     type Piece = {
         pos: Game.Vector
-        color: Game.Player
+        color: Marble
         id: number
     }
     type Player = Marble.BLACK | Marble.WHITE
