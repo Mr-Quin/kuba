@@ -12,7 +12,7 @@ i18n.use(initReactI18next)
                     anyone: 'Anyone',
                     undo: 'Undo',
                     reset: 'Reset',
-                    export: 'Export game state',
+                    export: 'Export',
                     allowExtra: 'Allow extra turn',
                 },
             },
