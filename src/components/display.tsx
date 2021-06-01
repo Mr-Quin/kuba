@@ -17,6 +17,9 @@ const useStyles = makeStyles({
     title: {
         fontSize: '3em',
     },
+    controls: {
+        flexWrap: 'wrap',
+    },
     backdrop: {
         zIndex: 999,
         color: 'white',
@@ -92,7 +95,7 @@ const Display = () => {
                         />
                     </Snackbar>
                 </CardContent>
-                <CardActions>
+                <CardActions className={classes.controls}>
                     <Undo>{t('undo')}</Undo>
                     <Reset>{t('reset')}</Reset>
                     <ExportGame>{t('export')}</ExportGame>

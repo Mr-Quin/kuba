@@ -21,6 +21,21 @@ export const getNext = ([pos, dir]: Game.Move) => sumVector(vectorTable[dir], po
 
 export const getPrev = ([pos, dir]: Game.Move) => sumVector(negateVector(vectorTable[dir]), pos)
 
+export const getSeries = (
+    [pos, dir]: Game.Move,
+    getMarble: (pos: Game.Vector) => Marble,
+    res: Game.Series = []
+): Game.Series => {
+    const marble = getMarble(pos)
+    if (marble === Marble.EMPTY) {
+        return res
+    } else if (isEdgeMove([pos, dir])) {
+        return [pos, ...res]
+    } else {
+        return getSeries([getNext([pos, dir]), dir], getMarble, [pos, ...res])
+    }
+}
+
 export const createBoard = () => {
     const [X, B, W, R] = [Marble.EMPTY, Marble.BLACK, Marble.WHITE, Marble.RED]
     // prettier-ignore

@@ -1,4 +1,4 @@
-import create from 'zustand'
+import create, { PartialState } from 'zustand'
 import { Game } from '../types/game'
 import { getLast, getWindowHash, setWindowHash, sumVector } from '../helpers/helpers'
 import {
@@ -11,6 +11,7 @@ import {
     getOtherDirection,
     getOtherPlayer,
     getPrev,
+    getSeries,
     initHash,
     isEdgeMove,
     isMarbleEmpty,
@@ -36,32 +37,33 @@ export interface GameStore {
     endTurn: () => void
     errorMessage: { message: string; update: any } // update is used to force re-trigger alert
     getMarble: (pos: Game.Vector) => Marble
-    getSeries: (pos: Game.Vector, dir: Direction, res?: Game.Series) => Game.Series
     hash: Game.Hash
     hashMove: (dir: Direction) => (series: Game.Series) => Game.Hash
     hashTable: Game.HashTable
     init: () => void
     makeMove: (move: Game.Move) => void
-    modifyCapture: (player: Game.Player, amount: number) => void
-    modifyTurn: (amount: number) => void
     moveTable: Nullable<Game.MoveTable>
     pieces: Game.Piece[]
     preCheckMove: (move: Game.Move) => Promise<Game.Move>
-    propagateMove: (dir: Direction) => (series: Game.Series) => Game.Hash
+    propagateMove: (
+        dir: Direction
+    ) => (series: Game.Series) => Promise<Pick<GameStore, 'hash' | 'board' | 'pieces'>>
     pushHistory: () => void
     reset: () => void
     searchMoves: () => Game.MoveTable
     setError: (errMessage: Error | string) => void
-    setHash: (hash: Game.Hash) => Promise<void>
-    setMarble: (pos: Game.Vector, marble: Marble) => void
     toggleExtraTurn: () => void
-    tryMove: (move: Game.Move) => Promise<Game.Hash>
+    tryMove: (move: Game.Move) => (series: Game.Series) => Promise<Game.Series>
     turn: number
     undo: () => void
     updateRoute: () => Promise<void>
-    updateState: (player: Game.Player) => () => Promise<any>
+    updateState: (
+        player: Game.Player
+    ) => (state: Pick<GameStore, 'hash' | 'board' | 'pieces'>) => Promise<PartialStore>
     winner: Nullable<Game.Player>
 }
+
+type PartialStore = PartialState<GameStore, keyof GameStore>
 
 const gameInitState = {
     allowExtraTurns: true,
@@ -80,73 +82,79 @@ const gameInitState = {
 
 const useGameStore = create<GameStore>((set, get) => ({
     ...gameInitState,
-    makeMove: ([pos, direction]) => {
-        const { getMarble, tryMove, preCheckMove, setError, updateRoute, setHash, updateState } =
-            get()
+    makeMove: (move) => {
+        const {
+            getMarble,
+            tryMove,
+            preCheckMove,
+            setError,
+            updateRoute,
+            updateState,
+            propagateMove,
+        } = get()
+
+        const [pos, dir] = move
 
         const player = getMarble(pos) as Game.Player // current color should eq current player
 
-        preCheckMove([pos, direction])
-            .then(tryMove)
-            .then(setHash)
+        preCheckMove(move)
+            .then(() => getSeries(move, getMarble))
+            .then(tryMove(move))
+            .then(propagateMove(dir))
             .then(updateState(player))
             .then(set)
             .then(updateRoute)
             .catch(setError)
     },
-    undo: () => {
-        const { turn, boardHistory, encode } = get()
-        if (turn <= 1) return
+    tryMove:
+        ([pos, dir]) =>
+        (series) => {
+            const { getMarble, moveTable, checkMove, currentPlayer } = get()
 
-        const {
-            board,
-            player: currentPlayer,
-            pieces,
-            captures,
-            hash,
-        } = boardHistory.pop() as Game.History
+            // manually check move is player or table is null
+            // if reason is not none, the move is invalid
+            const reason =
+                currentPlayer === null || moveTable === null
+                    ? checkMove([pos, dir], series, getMarble(pos) as Game.Player)
+                    : moveTable[pos]?.moves[dir] ?? Reason.WRONG_TURN
 
-        set((state) => {
-            return {
-                currentPlayer,
-                captures,
-                pieces,
-                board,
-                hash,
-                winner: null,
-                moveTable: null, // recalculate move table when a move is made
-                turn: currentPlayer !== state.currentPlayer ? state.turn - 1 : state.turn,
+            if (reason !== Reason.NONE) {
+                return Promise.reject(reasonTable[reason])
             }
-        })
 
-        setWindowHash(encode())
-    },
+            return Promise.resolve(series)
+        },
     propagateMove: (dir) => (series) => {
-        const { getMarble, setMarble, hashMove } = get()
+        const { hashMove, board, pieces, pushHistory } = get()
 
+        // save to history before modifying anything
+        pushHistory()
+
+        const firstPos = getLast(series)
         const simHash = hashMove(dir)(series)
 
-        // TODO: put into setMarble
+        // TODO: no mutation?
+        const newBoard = [...board]
+        const newPieces = [...pieces]
+
         series.forEach((pos) => {
             const edgeMove = isEdgeMove([pos, dir])
-            const curMarble = getMarble(pos)
+            const curMarble = newBoard[pos] ?? Marble.EMPTY
             const toPos = sumVector(pos, vectorTable[dir])
 
-            const pieces = get().pieces.map((piece) => {
-                if (piece.pos === pos) {
-                    // only update the position
-                    return { ...piece, pos: edgeMove ? Position.OFF_GRID : toPos }
-                }
-                return piece
-            })
-            set({ pieces: pieces })
+            const piecePos = newPieces.findIndex((piece) => piece.pos === pos)
 
-            if (!edgeMove) {
-                setMarble(toPos, curMarble)
+            if (edgeMove) {
+                newPieces[piecePos] = { ...newPieces[piecePos], pos: Position.OFF_GRID }
+            } else {
+                newPieces[piecePos] = { ...newPieces[piecePos], pos: toPos }
+                newBoard[toPos] = curMarble
             }
         })
-        setMarble(getLast(series), Marble.EMPTY)
-        return simHash
+        // manually set first pos
+        newBoard[firstPos] = Marble.EMPTY
+
+        return Promise.resolve({ hash: simHash, board: newBoard, pieces: newPieces })
     },
     hashMove: (dir) => (series) => {
         const { hashTable, getMarble, hash } = get()
@@ -162,90 +170,19 @@ const useGameStore = create<GameStore>((set, get) => ({
             return acc ^ hashTable[fromPos][marble] ^ hashTable[toPos][marble]
         }, hash)
     },
-    getSeries: (pos, dir, res = []) => {
-        const { getMarble, getSeries } = get()
-        const marble = getMarble(pos)
-        if (marble === Marble.EMPTY) {
-            return res
-        } else if (isEdgeMove([pos, dir])) {
-            return [pos, ...res]
-        } else {
-            return getSeries(getNext([pos, dir]), dir, [pos, ...res])
-        }
-    },
-    tryMove: ([pos, dir]) => {
-        return new Promise<Game.Hash>((res, rej) => {
-            const {
-                getSeries,
-                propagateMove,
-                getMarble,
-                moveTable,
-                checkMove,
-                currentPlayer,
-                pushHistory,
-            } = get()
-
-            const marbleSeries = getSeries(pos, dir)
-
-            // manually check move is player or table is null
-            // if reason is not none, the move is invalid
-            const reason =
-                currentPlayer === null || moveTable === null
-                    ? checkMove([pos, dir], marbleSeries, getMarble(pos) as Game.Player)
-                    : moveTable[pos]?.moves[dir] ?? Reason.WRONG_TURN
-
-            if (reason !== Reason.NONE) {
-                rej(reasonTable[reason])
-                return
-            }
-
-            // save to history before committing board
-            pushHistory()
-            const simHash = propagateMove(dir)(marbleSeries)
-
-            res(simHash)
-        })
-    },
     getMarble: (pos) => {
         const board = get().board
-        try {
-            return board[pos] ?? Marble.EMPTY
-        } catch (e) {
-            return Marble.EMPTY
-        }
-    },
-    setMarble: (pos, marble) => {
-        const board = get().board
-        try {
-            if (board[pos] !== undefined) {
-                const newBoard = [...board]
-                newBoard[pos] = marble
-                set({ board: newBoard })
-            }
-        } catch (e) {
-            return
-        }
-    },
-    modifyCapture: (player, amount) => {
-        const captures = get().captures
-        const val = captures[player] + amount
-
-        set({ captures: { ...captures, [player]: val } })
-    },
-    modifyTurn: (amount) => {
-        set((state) => ({ turn: state.turn + amount }))
+        return board[pos] ?? Marble.EMPTY
     },
     searchMoves: () => {
-        const { pieces, checkMove, getSeries } = get()
-
+        const { pieces, checkMove, getMarble } = get()
         // this only works if Direction enum has string values
         const directions = Object.values(Direction)
-
         return pieces
             .filter((piece) => piece.color !== Marble.RED && piece.pos !== Position.OFF_GRID)
             .reduce<Game.MoveTable>((acc, { pos, color }) => {
                 const moves = directions.reduce((acc, dir) => {
-                    const series = getSeries(pos, dir)
+                    const series = getSeries([pos, dir], getMarble)
                     const move = [pos, dir] as Game.Move
                     return { ...acc, [dir]: checkMove(move, series) }
                 }, {} as Record<Direction, Reason>)
@@ -304,13 +241,21 @@ const useGameStore = create<GameStore>((set, get) => ({
                     currentPlayer,
                     captures,
                 })
+                // TODO: redo the finding winner part
                 set((state) => ({ moveTable: state.searchMoves() }))
                 if (currentPlayer !== null) {
-                    // const moves = get().searchMoves()
-                    // set({ moveTable: moves })
-                    // if (countMoves(moves, currentPlayer) === 0) {
-                    //     set({ winner: getOtherPlayer(currentPlayer) })
-                    // }
+                    const moves = get().searchMoves()
+                    set({ moveTable: moves })
+
+                    const opponent = getOtherPlayer(currentPlayer)
+                    const opponentMoves = countMoves(moves, opponent)
+                    const myMoves = countMoves(moves, currentPlayer)
+
+                    if (myMoves === 0) {
+                        set({ winner: opponent })
+                    } else if (opponentMoves === 0) {
+                        set({ winner: currentPlayer })
+                    }
                 }
             })
             .catch(() => {
@@ -344,11 +289,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         if (currentPlayer === null) return
         set({ currentPlayer: getOtherPlayer(currentPlayer) })
     },
-    reset: () => {
-        setWindowHash()
-        get().init()
-    },
-    updateState: (player) => () => {
+    updateState: (player) => (state) => {
         const {
             boardHistory,
             allowExtraTurns,
@@ -361,7 +302,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         const nextMoves = searchMoves()
 
         const opponent = getOtherPlayer(player)
-        const curMarbleCount = countMarble(get().board)
+        const curMarbleCount = countMarble(state.board)
         const prevMarbleCount = countMarble(getLast(boardHistory)?.board ?? createBoard())
 
         const opponentMarbleDiff = prevMarbleCount[opponent] - curMarbleCount[opponent]
@@ -385,14 +326,42 @@ const useGameStore = create<GameStore>((set, get) => ({
             winner: playerWins ? player : null,
             turn: changePlayer ? turn + 1 : turn,
             captures: { ...prevCaptures, [player]: newPlayerCaptures },
-        } as any)
+            ...state,
+        } as PartialStore)
+    },
+    undo: () => {
+        const { turn, boardHistory, encode } = get()
+        if (turn <= 1) return
+
+        const {
+            board,
+            player: currentPlayer,
+            pieces,
+            captures,
+            hash,
+        } = boardHistory.pop() as Game.History
+
+        set((state) => {
+            return {
+                currentPlayer,
+                captures,
+                pieces,
+                board,
+                hash,
+                winner: null,
+                moveTable: null, // recalculate move table when a move is made
+                turn: currentPlayer !== state.currentPlayer ? state.turn - 1 : state.turn,
+            }
+        })
+
+        setWindowHash(encode())
+    },
+    reset: () => {
+        setWindowHash()
+        get().init()
     },
     updateRoute: () => {
         setWindowHash(get().encode())
-        return Promise.resolve()
-    },
-    setHash: (hash) => {
-        set({ hash })
         return Promise.resolve()
     },
     encode: () => {

@@ -6,11 +6,11 @@ import FormControlLabel from '@material-ui/core/FormControlLabel'
 import Checkbox from '@material-ui/core/Checkbox'
 
 export const Undo = memo((props) => {
-    const [handleUndo, history] = useGameStore(
-        useCallback((state: GameStore) => [state.undo, state.boardHistory], [])
+    const [handleUndo, turn] = useGameStore(
+        useCallback((state: GameStore) => [state.undo, state.turn], [])
     )
     return (
-        <Button variant="contained" disabled={history.length === 0} onClick={handleUndo}>
+        <Button variant="contained" disabled={turn === 1} onClick={handleUndo}>
             {props.children}
         </Button>
     )
