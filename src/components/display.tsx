@@ -47,10 +47,13 @@ const Display = () => {
         } else {
             setAlertOpen(false)
         }
+    }, [error])
+
+    useEffect(() => {
         if (winner !== null) {
             setBackDropOpen(true)
         }
-    }, [error, winner])
+    }, [winner])
 
     const handleAlertClose = useCallback((e, reason?) => {
         if (reason === 'clickaway') return
