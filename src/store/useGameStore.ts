@@ -57,9 +57,7 @@ export interface GameStore {
     turn: number
     undo: () => void
     updateRoute: () => Promise<void>
-    updateState: (
-        player: Game.Player
-    ) => (state: Pick<GameStore, 'hash' | 'board' | 'pieces'>) => Promise<PartialStore>
+    updateState: (player: Game.Player) => () => Promise<PartialStore>
     winner: Nullable<Game.Player>
 }
 
@@ -101,6 +99,8 @@ const useGameStore = create<GameStore>((set, get) => ({
             .then(() => getSeries(move, getMarble))
             .then(tryMove(move))
             .then(propagateMove(dir))
+            // update board, hash, and piece
+            .then(set)
             .then(updateState(player))
             .then(set)
             .then(updateRoute)
@@ -289,7 +289,7 @@ const useGameStore = create<GameStore>((set, get) => ({
         if (currentPlayer === null) return
         set({ currentPlayer: getOtherPlayer(currentPlayer) })
     },
-    updateState: (player) => (state) => {
+    updateState: (player) => () => {
         const {
             boardHistory,
             allowExtraTurns,
@@ -297,12 +297,14 @@ const useGameStore = create<GameStore>((set, get) => ({
             currentPlayer,
             searchMoves,
             turn,
+            board,
         } = get()
 
+        // board needs to be updated before searching
         const nextMoves = searchMoves()
 
         const opponent = getOtherPlayer(player)
-        const curMarbleCount = countMarble(state.board)
+        const curMarbleCount = countMarble(board)
         const prevMarbleCount = countMarble(getLast(boardHistory)?.board ?? createBoard())
 
         const opponentMarbleDiff = prevMarbleCount[opponent] - curMarbleCount[opponent]
@@ -326,7 +328,6 @@ const useGameStore = create<GameStore>((set, get) => ({
             winner: playerWins ? player : null,
             turn: changePlayer ? turn + 1 : turn,
             captures: { ...prevCaptures, [player]: newPlayerCaptures },
-            ...state,
         } as PartialStore)
     },
     undo: () => {
