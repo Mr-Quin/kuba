@@ -2,6 +2,7 @@ import React from 'react'
 import Link from '@material-ui/core/Link'
 import GitHubIcon from '@material-ui/icons/GitHub'
 import { makeStyles } from '@material-ui/core/styles'
+import Typography from '@material-ui/core/Typography'
 
 const useStyles = makeStyles({
     root: {
@@ -25,6 +26,8 @@ const Github = () => {
                 color="inherit"
             >
                 <GitHubIcon />
+                {/*accessibility text*/}
+                <Typography hidden>Github</Typography>
             </Link>
         </div>
     )
