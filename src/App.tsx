@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react'
 import Board from './components/board'
 import Display from './components/display'
+import Github from './components/github'
 import { Container } from '@material-ui/core'
 import useGameStore from './store/useGameStore'
 import i18n from './i18n/i18n'
@@ -20,6 +21,7 @@ const App = () => {
         <Container maxWidth="sm">
             <Display />
             <Board />
+            <Github />
         </Container>
     )
 }
