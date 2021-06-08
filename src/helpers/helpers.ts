@@ -1,19 +1,26 @@
 import { Game } from '../types/game'
 
-export const getLast = <t>(arr: t[]): t => arr[arr.length - 1]
+export const getLast = <t>(arr: t[]): t => {
+    return arr[arr.length - 1]
+}
+export const invertVector = (vector: Game.Vector) => {
+    return vector.map((val) => -val) as Game.Vector
+}
 
-export const negateVector = (vector: Game.Vector) => -vector
-
-export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => vector1 + vector2
+export const sumVector = (vector1: Game.Vector, vector2: Game.Vector) => {
+    return vector1.map((val, i) => val + vector2[i]) as Game.Vector
+}
 
 export const setWindowHash = (path?: string) => {
     window.location.hash = path ?? ''
 }
 
-export const getWindowHash = () => window.location.hash.slice(1)
+export const readWindowHash = () => {
+    return window.location.hash.slice(1)
+}
 
 export const chunk = <t>(arr: t[], size: number): t[][] =>
-    Array.from({ length: Math.ceil(arr.length / size) }, (_, i) =>
+    Array.from({ length: Math.ceil(arr.length / size) }, (v, i) =>
         arr.slice(i * size, i * size + size)
     )
 
