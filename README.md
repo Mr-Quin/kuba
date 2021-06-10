@@ -2,6 +2,8 @@
 
 A React implementation of the [Kuba board game](https://boardgamegeek.com/boardgame/1337/kuba)
 
+[Python version](https://github.com/Mr-Quin/kuba/tree/py)
+
 ## Rules implemented:
 - [x] Cannot push if opposite direction is not empty
 - [x] Cannot push off one's own marble from the board
